@@ -1,0 +1,55 @@
+# Copyright 2020-2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: portray
+version: 0.1.0.0
+category: Text
+synopsis: A pseudo-Haskell syntax type and typeclass producing it.
+description: |
+  This provides a single place to describe how a type should be formatted as
+  pseudo-Haskell syntax, independently of the actual pretty-printing library
+  (e.g. "pretty", "ansi-wl-pprint", or "prettyprinter") that will ultimately be
+  used to render it.  This means packages can cheaply provide integration with
+  all pretty-printers by providing an instance of this class, without needing
+  to depend on any of them (or their layout algorithms).
+
+  Of course, this comes at the cost of targeting a predeclared set of
+  formatting choices.  If there are any egregious omissions, we can always add
+  more constructors.
+
+  This library is explicitly not intended to provide a way to express /all
+  documents/; only a particular flavor of pseudo-Haskell syntax representing
+  values and types.
+license: Apache-2.0
+author: Andrew Pritchard <awpr@google.com>
+copyright: 2020-2021 Google LLC
+maintainer: Andrew Pritchard <awpr@google.com>
+github: google/hs-portray/portray
+
+# Note: this causes CHANGELOG.md to be included in Hackage distributions.
+extra-source-files:
+  CHANGELOG.md
+
+ghc-options: -Wall -Werror
+
+dependencies:
+  - base
+  - containers
+  - text
+  - wrapped
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - Data.Portray

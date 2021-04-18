@@ -1,0 +1,55 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 7502c1fecd0ca7b189b4208120574edb30cbe22f7802adb3aaad4e87e9392061
+
+name:           portray
+version:        0.1.0.0
+synopsis:       A pseudo-Haskell syntax type and typeclass producing it.
+description:    This provides a single place to describe how a type should be formatted as
+                pseudo-Haskell syntax, independently of the actual pretty-printing library
+                (e.g. "pretty", "ansi-wl-pprint", or "prettyprinter") that will ultimately be
+                used to render it.  This means packages can cheaply provide integration with
+                all pretty-printers by providing an instance of this class, without needing
+                to depend on any of them (or their layout algorithms).
+                .
+                Of course, this comes at the cost of targeting a predeclared set of
+                formatting choices.  If there are any egregious omissions, we can always add
+                more constructors.
+                .
+                This library is explicitly not intended to provide a way to express /all
+                documents/; only a particular flavor of pseudo-Haskell syntax representing
+                values and types.
+category:       Text
+homepage:       https://github.com/google/hs-portray#readme
+bug-reports:    https://github.com/google/hs-portray/issues
+author:         Andrew Pritchard <awpr@google.com>
+maintainer:     Andrew Pritchard <awpr@google.com>
+copyright:      2020-2021 Google LLC
+license:        Apache-2.0
+build-type:     Simple
+extra-source-files:
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/google/hs-portray
+  subdir: portray
+
+library
+  exposed-modules:
+      Data.Portray
+  other-modules:
+      Paths_portray
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Werror
+  build-depends:
+      base
+    , containers
+    , text
+    , wrapped
+  default-language: Haskell2010
