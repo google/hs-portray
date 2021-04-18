@@ -12,16 +12,36 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
+-- | Provides rendering of 'Portrayal' to 'Doc'.
+--
+-- The primary intended use of this module is to import 'WrappedPortray' and
+-- use it to derive 'Pretty' instances:
+--
+-- @
+--     data MyRecord = MyRecord { anInt :: Int, anotherRecord :: MyRecord }
+--       deriving Generic
+--       deriving Portray via Wrapped Generic MyRecord
+--       deriving Pretty via WrappedPortray MyRecord
+-- @
+--
+-- This module also exports the underlying rendering functionality in a variety
+-- of forms for more esoteric uses.
+
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 
 module Data.Portray.Pretty
-         ( portrayalToDocPrecF, portrayalToDocPrec, portrayalToDoc
-         , pPrintParen
+         ( -- * DerivingVia wrapper
+           WrappedPortray(..)
+           -- * Rendering Functions
+           -- ** With Associativity
          , DocAssocPrec, toDocAssocPrecF, toDocAssocPrec
-         , WrappedPortray(..)
+           -- ** With Precedence
+         , portrayalToDocPrecF, portrayalToDocPrec
+           -- ** Convenience Functions
+         , portrayalToDoc
          , prettyShowPortrayal
          , pPrintPortrayal
          ) where
@@ -32,6 +52,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as P
+import qualified Text.PrettyPrint.HughesPJ as P (maybeParens)
 import Text.PrettyPrint.HughesPJClass
          ( Pretty(..), PrettyLevel, prettyNormal
          )
@@ -42,7 +63,8 @@ import Data.Portray
          , cata, portray
          )
 
-type DocAssocPrec = Assoc -> Rational -> P.Doc
+-- | A 'Doc' that varies according to associativity and precedence context.
+type DocAssocPrec = Assoc -> Rational -> Doc
 
 fixityCompatible :: Infixity -> Assoc -> Rational -> Bool
 fixityCompatible (Infixity assoc p) assoc' p' = case compare p' p of
@@ -55,27 +77,26 @@ matchCtx ctx assoc
   | ctx == assoc = ctx
   | otherwise = AssocNope
 
-portrayalToDoc :: Portrayal -> P.Doc
+-- | Convert a 'Portrayal' to a 'Doc'.
+portrayalToDoc :: Portrayal -> Doc
 portrayalToDoc t = portrayalToDocPrec t prettyNormal (-1)
-
-pPrintParen :: Bool -> Doc -> Doc
-pPrintParen b = if b then P.parens else id
 
 ppBinop
   :: String
   -> Infixity
   -> DocAssocPrec -> DocAssocPrec -> DocAssocPrec
 ppBinop nm fx@(Infixity assoc opPrec) x y lr p =
-  pPrintParen (not $ fixityCompatible fx lr p) $ P.sep
+  P.maybeParens (not $ fixityCompatible fx lr p) $ P.sep
     [ x (matchCtx AssocL assoc) opPrec P.<+> P.text nm
     , P.nest 2 $ y (matchCtx AssocR assoc) opPrec
     ]
 
+-- | Render one layer of 'PortrayalF' to 'DocAssocPrec'.
 toDocAssocPrecF :: PortrayalF DocAssocPrec -> DocAssocPrec
 toDocAssocPrecF = \case
   AtomF txt -> \_ _ -> P.text (T.unpack txt)
   ApplyF fn xs -> \lr p ->
-    pPrintParen (not $ fixityCompatible (Infixity AssocL 10) lr p) $
+    P.maybeParens (not $ fixityCompatible (Infixity AssocL 10) lr p) $
       P.sep
         [ fn AssocL 10
         , P.nest 2 $ P.sep $ xs <&> \docprec -> docprec AssocR 10
@@ -111,7 +132,7 @@ toDocAssocPrecF = \case
       ]
   TyAppF val ty -> \_ _ ->
     P.sep [val AssocNope 10, P.nest 2 $ P.text "@" <> ty AssocNope 10]
-  TySigF val ty -> \_ p -> pPrintParen (p >= 0) $
+  TySigF val ty -> \_ p -> P.maybeParens (p >= 0) $
     P.sep [val AssocNope 0, P.nest 2 $ P.text "::" P.<+> ty AssocNope 0]
   QuotF nm content -> \_ _ ->
     P.sep
@@ -125,23 +146,30 @@ toDocAssocPrecF = \case
 toDocPrec :: DocAssocPrec -> PrettyLevel -> Rational -> Doc
 toDocPrec dap _l = dap AssocNope . subtract 1
 
+-- | Render a 'PortrayalF' to a 'Doc'.
 portrayalToDocPrecF
   :: PortrayalF DocAssocPrec -> PrettyLevel -> Rational -> Doc
 portrayalToDocPrecF = toDocPrec . toDocAssocPrecF
 
+-- | Render a 'Portrayal' to a 'Doc' with support for operator associativity.
 toDocAssocPrec :: Portrayal -> DocAssocPrec
 toDocAssocPrec = cata toDocAssocPrecF . unPortrayal
 
+-- | Render a 'Portrayal' to a 'Doc' with only operator precedence.
 portrayalToDocPrec :: Portrayal -> PrettyLevel -> Rational -> Doc
 portrayalToDocPrec = toDocPrec . toDocAssocPrec
 
+-- | 'portrayalToDocPrec' with arguments ordered for use in 'pPrintPrec'.
 pPrintPortrayal :: PrettyLevel -> Rational -> Portrayal -> Doc
 pPrintPortrayal l p x = portrayalToDocPrec x l p
 
+-- | Convenience function for rendering a 'Portrayal' to a 'String'.
 prettyShowPortrayal :: Portrayal -> String
 prettyShowPortrayal p = show (toDocAssocPrec p AssocNope 0)
 
--- Sadly we can't use 'Wrapped' since it would be an orphan instance.  Oh well.
+-- | A newtype providing a 'Pretty' instance via 'Portray', for @DerivingVia@.
+--
+-- Sadly we can't use @Wrapped@ since it would be an orphan instance.  Oh well.
 -- We'll just define a unique 'WrappedPortray' newtype in each
 -- pretty-printer-integration package.
 newtype WrappedPortray a = WrappedPortray { unWrappedPortray :: a }

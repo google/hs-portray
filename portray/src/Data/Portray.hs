@@ -12,6 +12,8 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
+-- | Provides a compatibility layer of Haskell-like terms for pretty-printers.
+
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -32,17 +34,28 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Data.Portray
-         ( Portrayal
+         ( -- * Syntax Tree
+           Portrayal
              ( Atom, Apply, Binop, Tuple, List
              , Mconcat, Record, TyApp, TySig
              , Quot, Unlines, Nest
              , ..
              )
-         , PortrayalF(..), Portray(..)
-         , Assoc(..), Infixity(..), FactorPortrayal(..)
-         , ShowAtom(..), showAtom, strAtom, strQuot, strBinop
-         , Fix(..), cata
-         , portrayCallStack
+         , FactorPortrayal(..)
+           -- ** Operator Fixity
+         , Assoc(..), Infixity(..), infix_, infixl_, infixr_
+           -- ** Base Functor
+         , PortrayalF(..)
+           -- * Class
+         , Portray(..)
+           -- ** Via Show
+         , ShowAtom(..)
+           -- ** Via Generic
+         , GPortray(..), GPortrayProduct(..)
+           -- * Convenience
+         , showAtom, strAtom, strQuot, strBinop
+           -- * Miscellaneous
+         , Fix(..), cata, portrayCallStack
          ) where
 
 import Data.Coerce (Coercible, coerce)
@@ -76,19 +89,29 @@ import Numeric.Natural (Natural)
 
 import Data.Wrapped (Wrapped(..))
 
+-- | Associativity of an infix operator.
 data Assoc = AssocL | AssocR | AssocNope
   deriving (Read, Show, Eq, Ord, Generic)
   deriving Portray via Wrapped Generic Assoc
 
+-- | Associativity and binding precedence of an infix operator.
 data Infixity = Infixity !Assoc !Rational
   deriving (Read, Show, Eq, Ord, Generic)
   deriving Portray via Wrapped Generic Infixity
 
--- | The portrayal of a Haskell runtime value as a pseudo-Haskell syntax tree.
---
--- This can be rendered to various pretty-printing libraries' document types
--- relatively easily; as such, it provides a /lingua franca/ for integrating
--- with pretty-printers, without incurring heavyweight dependencies.
+-- | Construct the 'Infixity' corresponding to e.g. @infix 6 +&&+*@
+infix_ :: Rational -> Infixity
+infix_ = Infixity AssocNope
+
+-- | Construct the 'Infixity' corresponding to e.g. @infixl 6 +&&+*@
+infixl_ :: Rational -> Infixity
+infixl_ = Infixity AssocL
+
+-- | Construct the 'Infixity' corresponding to e.g. @infixr 6 +&&+*@
+infixr_ :: Rational -> Infixity
+infixr_ = Infixity AssocR
+
+-- | A single level of pseudo-Haskell expression; used to define 'Portrayal'.
 data PortrayalF a
   = AtomF !Text
     -- ^ Render this text directly.
@@ -112,19 +135,17 @@ data PortrayalF a
     -- ^ Render a quasiquoter term with the given name.
   | UnlinesF [a]
     -- ^ Render a collection of vertically-aligned lines
-    --
-    -- This is meant for use inside 'QuotF's, since it needn't produce valid
-    -- Haskell syntax.
   | NestF !Int !a
     -- ^ Indent the subdocument by the given number of columns.
-    --
-    -- This is meant for use inside 'QuotF's, since it needn't produce valid
-    -- Haskell syntax.
   deriving (Read, Show, Functor, Foldable, Traversable, Generic)
   deriving Portray via Wrapped Generic (PortrayalF a)
 
 instance IsString (PortrayalF a) where fromString = AtomF . T.pack
 
+-- | Fixed-point of a functor.
+--
+-- There are many packages that provide equivalent things, but we need almost
+-- nothing but the type itself, so we may as well just define one locally.
 newtype Fix f = Fix (f (Fix f))
   deriving Generic
 
@@ -134,7 +155,11 @@ deriving newtype
 deriving stock
   instance (forall a. Show a => Show (f a)) => Show (Fix f)
 
--- This is a newtype solely so that we can export pattern synonyms with it.
+-- | The portrayal of a Haskell runtime value as a pseudo-Haskell syntax tree.
+--
+-- This can be rendered to various pretty-printing libraries' document types
+-- relatively easily; as such, it provides a /lingua franca/ for integrating
+-- with pretty-printers, without incurring heavyweight dependencies.
 newtype Portrayal = Portrayal { unPortrayal :: Fix PortrayalF }
   deriving stock Generic
   deriving newtype (Portray, Show)
@@ -146,6 +171,9 @@ instance IsString Portrayal where fromString = Atom . T.pack
       Mconcat, Record, TyApp, TySig, Quot
   #-}
 
+-- An explicitly-bidirectional pattern synonym that makes it possible to write
+-- simply-bidirectional pattern synonyms involving coercions.
+--
 -- N.B.: lol, I did not expect this to work.
 pattern Coerced :: Coercible a b => a -> b
 pattern Coerced x <- (coerce -> x)
@@ -155,34 +183,134 @@ pattern Coerced x <- (coerce -> x)
 -- A collection of pattern synonyms to hide the fact that we're using Fix
 -- internally.
 
+-- | A single chunk of text included directly in the pretty-printed output.
+--
+-- This is used for things like literals and constructor names.
 pattern Atom :: Text -> Portrayal
 pattern Atom txt = Portrayal (Fix (AtomF txt))
 
+-- | A function or constructor application of arbitrary arity.
+--
+-- Although we could have just unary function application, this gives backends
+-- a hint about how to format the result: for example, the "pretty" backend
+-- prints the function (parenthesized if non-atomic) followed by the arguments
+-- indented by two spaces; a chain of unary applications would be needlessly
+-- parenthesized.
+--
+-- Given:
+--
+-- @
+--     Apply "These" ["2", "4"]
+-- @
+--
+-- We render something like @These 2 4@, or if line-wrapped:
+--
+-- @
+--     These
+--       2
+--       4
+-- @
 pattern Apply :: Portrayal -> [Portrayal] -> Portrayal
 pattern Apply f xs = Portrayal (Fix (ApplyF (Coerced f) (Coerced xs)))
 
+-- | A binary operator application.
+--
+-- The fixity is used to avoid unnecessary parentheses, even in chains of
+-- operators of the same precedence.
+--
+-- Given:
+--
+-- @
+--     Binop "+" (infixl_ 6)
+--       [ Binop "+" (infixl_ 6) ["2", "4"]
+--       , "6"
+--       ]
+-- @
+--
+-- We render something like: @2 + 4 + 6@
 pattern Binop :: Text -> Infixity -> Portrayal -> Portrayal -> Portrayal
 pattern Binop nm inf x y =
   Portrayal (Fix (BinopF nm inf (Coerced x) (Coerced y)))
 
-pattern List, Tuple, Mconcat :: [Portrayal] -> Portrayal
-pattern Tuple xs = Portrayal (Fix (TupleF (Coerced xs)))
+-- | A list literal.
+--
+-- Given:
+--
+-- @
+--     List [Apply "These" ["2", "4"], Apply "That" ["6"]]
+-- @
+--
+-- We render something like:
+--
+-- @
+--     [ These 2 4
+--     , That 6
+--     ]
+-- @
+pattern List :: [Portrayal] -> Portrayal
 pattern List xs = Portrayal (Fix (ListF (Coerced xs)))
+
+-- | A tuple.
+--
+-- Given @Tuple ["2", "4"]@, we render something like @(2, 4)@
+pattern Tuple :: [Portrayal] -> Portrayal
+pattern Tuple xs = Portrayal (Fix (TupleF (Coerced xs)))
+
+-- | A value decomposed into a chain of 'mappend's.
+--
+-- Given @Mconcat []@, we render @mempty@
+--
+-- Given @Mconcat [List ["2"], List ["4", "6"]@, we render @[2] <> [4, 6]@
+pattern Mconcat :: [Portrayal] -> Portrayal
 pattern Mconcat xs = Portrayal (Fix (MconcatF (Coerced xs)))
 
+-- | A record literal.
+--
+-- Given:
+--
+-- @
+--     Record "Identity" [FactorPortrayal "runIdentity" "2"]
+-- @
+--
+-- We render something like:
+--
+-- @
+--     Identity
+--       { runIdentity = 2
+--       }
+-- @
 pattern Record :: Portrayal -> [FactorPortrayal Portrayal] -> Portrayal
 pattern Record x xs = Portrayal (Fix (RecordF (Coerced x) (Coerced xs)))
 
-pattern TyApp, TySig :: Portrayal -> Portrayal -> Portrayal
+-- | A type application.
+--
+-- Given @TyApp "Proxy" "Int"@, we render @Proxy \@Int@
+pattern TyApp :: Portrayal -> Portrayal -> Portrayal
 pattern TyApp x t = Portrayal (Fix (TyAppF (Coerced x) (Coerced t)))
+
+-- | An explicit type signature.
+--
+-- Given @TySig "Proxy" [Apply "Proxy" ["Int"]]@, we render @Proxy :: Proxy Int@
+pattern TySig :: Portrayal -> Portrayal -> Portrayal
 pattern TySig x t = Portrayal (Fix (TySigF (Coerced x) (Coerced t)))
 
+-- | A quasiquoter expression.
+--
+-- Given @Quot "expr" (Binop "+" _ ["x", "!y"])@, we render @[expr| x + !y |]@
 pattern Quot :: Text -> Portrayal -> Portrayal
 pattern Quot t x = Portrayal (Fix (QuotF t (Coerced x)))
 
+-- | A series of lines arranged vertically, if supported.
+--
+-- This is meant for use inside 'Quot', where it makes sense to use non-Haskell
+-- syntax.
 pattern Unlines :: [Portrayal] -> Portrayal
 pattern Unlines xs = Portrayal (Fix (UnlinesF (Coerced xs)))
 
+-- | Indent a sub-expression by the given number of spaces.
+--
+-- This is meant for use inside 'Quot', where it makes sense to use non-Haskell
+-- syntax.
 pattern Nest :: Int -> Portrayal -> Portrayal
 pattern Nest n x = Portrayal (Fix (NestF n (Coerced x)))
 
@@ -208,18 +336,25 @@ pattern Nest n x = Portrayal (Fix (NestF n (Coerced x)))
 class Portray a where
   portray :: a -> Portrayal
 
+-- | Convenience for using a 'Show' instance and wrapping the result in 'Atom'.
 showAtom :: Show a => a -> Portrayal
 showAtom = strAtom . show
 
+-- | Convenience for building an 'Atom' from a 'String'.
+--
+-- Note if you just want a string literal, @OverloadedStrings@ is supported.
 strAtom :: String -> Portrayal
 strAtom = Atom . T.pack
 
+-- | Convenience for building a 'Quot' from a 'String'.
 strQuot :: String -> Portrayal -> Portrayal
 strQuot = Quot . T.pack
 
+-- | Convenience for building a 'Binop' with a 'String' operator name.
 strBinop :: String -> Infixity -> Portrayal -> Portrayal -> Portrayal
 strBinop = Binop . T.pack
 
+-- | A 'Portrayal' along with a field name; one piece of a record literal.
 data FactorPortrayal a = FactorPortrayal
   { _fpFieldName :: !Text
   , _fpPortrayal :: !a
@@ -227,6 +362,10 @@ data FactorPortrayal a = FactorPortrayal
   deriving (Read, Show, Functor, Foldable, Traversable, Generic)
   deriving Portray via Wrapped Generic (FactorPortrayal a)
 
+-- | Generics-based deriving of 'Portray' for product types.
+--
+-- Exported mostly to give Haddock something to link to; use
+-- @deriving Portray via Wrapped Generic MyType@.
 class GPortrayProduct f where
   gportrayProduct
     :: f a -> [FactorPortrayal Portrayal] -> [FactorPortrayal Portrayal]
@@ -242,6 +381,10 @@ instance (GPortrayProduct f, GPortrayProduct g)
       => GPortrayProduct (f :*: g) where
   gportrayProduct (f :*: g) = gportrayProduct f . gportrayProduct g
 
+-- | Generics-based deriving of 'Portray'.
+--
+-- Exported mostly to give Haddock something to link to; use
+-- @deriving Portray via Wrapped Generic MyType@.
 class GPortray f where
   gportray :: f a -> Portrayal
 
@@ -305,6 +448,7 @@ instance (Constructor ('MetaCons n fx 'False), GPortrayProduct f)
 instance (Generic a, GPortray (Rep a)) => Portray (Wrapped Generic a) where
   portray (Wrapped x) = gportray (from x)
 
+-- | A newtype wrapper providing a 'Portray' instance via 'showAtom'.
 newtype ShowAtom a = ShowAtom { unShowAtom :: a }
 
 instance Show a => Portray (ShowAtom a) where
@@ -371,6 +515,7 @@ deriving via Wrapped IsList (NonEmpty a)
 -- Note: intentionally no instance for @'Wrapped1' 'Foldable'@, since that
 -- doesn't ensure that 'fromList' is actually a valid way to construct @f a@.
 
+-- | Construct a 'Portrayal' of a 'CallStack' without the "callStack" prefix.
 portrayCallStack :: [(String, SrcLoc)] -> Portrayal
 portrayCallStack xs = Unlines
   [ strAtom "GHC.Stack.CallStack:"
@@ -385,6 +530,7 @@ instance Portray CallStack where
     [] -> strAtom "emptyCallStack"
     xs -> strQuot "callStack" $ portrayCallStack xs
 
+-- | Fold a @Fix f@ to @a@ given a function to collapse each layer.
 cata :: Functor f => (f a -> a) -> Fix f -> a
 cata f = go
  where
