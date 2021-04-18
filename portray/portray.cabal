@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7502c1fecd0ca7b189b4208120574edb30cbe22f7802adb3aaad4e87e9392061
+-- hash: e8a41e45655e2b80bd137abf462b6746beb091376a51f5736221a833c201e05f
 
 name:           portray
 version:        0.1.0.0
@@ -48,8 +48,8 @@ library
       src
   ghc-options: -Wall -Werror
   build-depends:
-      base
-    , containers
-    , text
-    , wrapped
+      base >=4.12 && <4.16
+    , containers >=0.6 && <0.7
+    , text >=0.1 && <1.3
+    , wrapped >=0.1 && <0.2
   default-language: Haskell2010
