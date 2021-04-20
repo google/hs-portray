@@ -33,8 +33,10 @@
 {-# LANGUAGE LambdaCase #-}
 
 module Data.Portray.Pretty
-         ( -- * DerivingVia wrapper
-           WrappedPortray(..)
+         ( -- * Pretty-Printing
+           prettyShow, pp
+           -- * DerivingVia wrapper
+         , WrappedPortray(..)
            -- * Rendering Functions
            -- ** With Associativity
          , DocAssocPrec, toDocAssocPrecF, toDocAssocPrec
@@ -62,6 +64,14 @@ import Data.Portray
          , Portray, Portrayal(..), PortrayalF(..)
          , cata, portray
          )
+
+-- | Pretty-print a value to stdout using its 'Portray' instance.
+pp :: Portray a => a -> IO ()
+pp = putStrLn . prettyShow
+
+-- | Pretty-print a value using its 'Portray' instance.
+prettyShow :: Portray a => a -> String
+prettyShow = prettyShowPortrayal . portray
 
 -- | A 'Doc' that varies according to associativity and precedence context.
 type DocAssocPrec = Assoc -> Rational -> Doc
