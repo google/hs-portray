@@ -37,7 +37,7 @@ module Data.Portray
          ( -- * Syntax Tree
            Portrayal
              ( Atom, Apply, Binop, Tuple, List
-             , Mconcat, Record, TyApp, TySig
+             , LambdaCase, Mconcat, Record, TyApp, TySig
              , Quot, Unlines, Nest
              , ..
              )
@@ -123,6 +123,8 @@ data PortrayalF a
     -- ^ Render a tuple of sub-values.
   | ListF [a]
     -- ^ Render a list of sub-values.
+  | LambdaCaseF [(a, a)]
+    -- ^ Render a lambda-case expression.
   | MconcatF [a]
     -- ^ Render a @<>@-separated list of "monoidy" values.
   | RecordF !a [FactorPortrayal a]
@@ -141,6 +143,15 @@ data PortrayalF a
   deriving Portray via Wrapped Generic (PortrayalF a)
 
 instance IsString (PortrayalF a) where fromString = AtomF . T.pack
+
+-- | A 'Portrayal' along with a field name; one piece of a record literal.
+data FactorPortrayal a = FactorPortrayal
+  { _fpFieldName :: !Text
+  , _fpPortrayal :: !a
+  }
+  deriving (Read, Show, Functor, Foldable, Traversable, Generic)
+  deriving Portray via Wrapped Generic (FactorPortrayal a)
+
 
 -- | Fixed-point of a functor.
 --
@@ -256,6 +267,17 @@ pattern List xs = Portrayal (Fix (ListF (Coerced xs)))
 pattern Tuple :: [Portrayal] -> Portrayal
 pattern Tuple xs = Portrayal (Fix (TupleF (Coerced xs)))
 
+-- | A lambda-case.
+--
+-- Given @LambdaCase [("0", "\"hi\""), ("1", "\"hello\"")]@, we render
+-- something like @\case 0 -> "hi"; 1 -> "hello"@.
+--
+-- This can be useful in cases where meaningful values effectively appear in
+-- negative position in a type, like in a total map or table with non-integral
+-- indices.
+pattern LambdaCase :: [(Portrayal, Portrayal)] -> Portrayal
+pattern LambdaCase xs = Portrayal (Fix (LambdaCaseF (Coerced xs)))
+
 -- | A value decomposed into a chain of 'mappend's.
 --
 -- Given @Mconcat []@, we render @mempty@
@@ -353,14 +375,6 @@ strQuot = Quot . T.pack
 -- | Convenience for building a 'Binop' with a 'String' operator name.
 strBinop :: String -> Infixity -> Portrayal -> Portrayal -> Portrayal
 strBinop = Binop . T.pack
-
--- | A 'Portrayal' along with a field name; one piece of a record literal.
-data FactorPortrayal a = FactorPortrayal
-  { _fpFieldName :: !Text
-  , _fpPortrayal :: !a
-  }
-  deriving (Read, Show, Functor, Foldable, Traversable, Generic)
-  deriving Portray via Wrapped Generic (FactorPortrayal a)
 
 -- | Generics-based deriving of 'Portray' for product types.
 --

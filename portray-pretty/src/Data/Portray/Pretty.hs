@@ -127,6 +127,22 @@ toDocAssocPrecF = \case
         mempty_ _ _ = P.text "mempty"
         fixity = Infixity AssocR 6
     in  fromMaybe mempty_ $ foldr g Nothing xs
+  LambdaCaseF xs -> \_ p ->
+    P.maybeParens (p >= 10) $
+      P.sep
+        [ P.text "\\case"
+        , P.nest 2 $ P.sep $
+            [ P.cat $
+                zipWith ((P.<+>) . P.text) ("{" : repeat ";") $
+                  [ P.sep $
+                      [ pat AssocNope 0 P.<+> P.text "->"
+                      , P.nest 2 $ val AssocNope 0
+                      ]
+                  | (pat, val) <- xs
+                  ]
+            , P.text "}"
+            ]
+        ]
   RecordF con sels -> \_ _ -> case sels of
     [] -> con AssocNope (-1)
     _  -> P.sep
