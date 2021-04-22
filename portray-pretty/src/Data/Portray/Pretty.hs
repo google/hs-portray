@@ -31,6 +31,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Data.Portray.Pretty
          ( -- * Pretty-Printing
@@ -101,6 +102,19 @@ ppBinop nm fx@(Infixity assoc opPrec) x y lr p =
     , P.nest 2 $ y (matchCtx AssocR assoc) opPrec
     ]
 
+ppBulletList
+  :: Doc -- ^ Open brace,  e.g. {  [  {  (
+  -> Doc -- ^ Separator,   e.g. ;  ,  ,  ,
+  -> Doc -- ^ Close brace, e.g. }  ]  }  )
+  -> [Doc]
+  -> Doc
+ppBulletList opener _         closer []   = opener <> closer
+ppBulletList opener separator closer docs =
+  P.sep $
+    [ P.fcat $ zipWith (P.<+>) (opener : repeat separator) docs
+    , closer
+    ]
+
 -- | Render one layer of 'PortrayalF' to 'DocAssocPrec'.
 toDocAssocPrecF :: PortrayalF DocAssocPrec -> DocAssocPrec
 toDocAssocPrecF = \case
@@ -112,59 +126,50 @@ toDocAssocPrecF = \case
         , P.nest 2 $ P.sep $ xs <&> \docprec -> docprec AssocR 10
         ]
   BinopF nm fx x y -> ppBinop (T.unpack nm) fx x y
-  TupleF xs -> \_ _ ->
-    P.parens . P.fsep . P.punctuate P.comma $
-    xs <&> \x -> x AssocNope (-1)
-  ListF xs -> \_ _ ->
-    P.brackets . P.fsep . P.punctuate P.comma $
-    xs <&> \x -> x AssocNope (-1)
+  TupleF xs -> \_ _ -> ppBulletList "(" "," ")" $ xs <&> \x -> x AssocNope (-1)
+  ListF xs -> \_ _ -> ppBulletList "[" "," "]" $ xs <&> \x -> x AssocNope (-1)
   -- TODO remove?
   MconcatF xs ->
     let g
           :: DocAssocPrec
           -> Maybe DocAssocPrec -> Maybe DocAssocPrec
         g l mr = Just $ maybe l (ppBinop "<>" fixity l) mr
-        mempty_ _ _ = P.text "mempty"
+        mempty_ _ _ = "mempty"
         fixity = Infixity AssocR 6
     in  fromMaybe mempty_ $ foldr g Nothing xs
   LambdaCaseF xs -> \_ p ->
     P.maybeParens (p >= 10) $
       P.sep
-        [ P.text "\\case"
-        , P.nest 2 $ P.sep $
-            [ P.cat $
-                zipWith ((P.<+>) . P.text) ("{" : repeat ";") $
-                  [ P.sep $
-                      [ pat AssocNope 0 P.<+> P.text "->"
-                      , P.nest 2 $ val AssocNope 0
-                      ]
-                  | (pat, val) <- xs
-                  ]
-            , P.text "}"
+        [ "\\case"
+        , P.nest 2 $ ppBulletList "{" ";" "}"
+            [ P.sep $
+                [ pat AssocNope 0 P.<+> "->"
+                , P.nest 2 $ val AssocNope 0
+                ]
+            | (pat, val) <- xs
             ]
         ]
   RecordF con sels -> \_ _ -> case sels of
     [] -> con AssocNope (-1)
     _  -> P.sep
-      [ con AssocNope 10 P.<+> P.lbrace
-      , P.nest 2 $ P.sep $ P.punctuate P.comma
+      [ con AssocNope 10
+      , P.nest 2 $ ppBulletList "{" "," "}"
           [ P.sep
-              [ P.text (T.unpack sel) P.<+> P.text "="
+              [ P.text (T.unpack sel) P.<+> "="
               , P.nest 2 $ val AssocNope 0
               ]
           | FactorPortrayal sel val <- sels
           ]
-      , P.rbrace
       ]
   TyAppF val ty -> \_ _ ->
-    P.sep [val AssocNope 10, P.nest 2 $ P.text "@" <> ty AssocNope 10]
+    P.sep [val AssocNope 10, P.nest 2 $ "@" <> ty AssocNope 10]
   TySigF val ty -> \_ p -> P.maybeParens (p >= 0) $
-    P.sep [val AssocNope 0, P.nest 2 $ P.text "::" P.<+> ty AssocNope 0]
+    P.sep [val AssocNope 0, P.nest 2 $ "::" P.<+> ty AssocNope 0]
   QuotF nm content -> \_ _ ->
     P.sep
       [ P.char '[' <> P.text (T.unpack nm) <> P.char '|'
       , P.nest 2 $ content AssocNope (-1)
-      , P.text "|]"
+      , "|]"
       ]
   UnlinesF ls -> \_ _ -> P.vcat (ls <&> \l -> l AssocNope (-1))
   NestF n x -> \_ _ -> P.nest n (x AssocNope (-1))
