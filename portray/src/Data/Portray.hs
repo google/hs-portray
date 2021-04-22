@@ -74,6 +74,8 @@ import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.String (IsString(..))
 import Data.Text (Text)
+import Data.Type.Coercion (Coercion(..))
+import Data.Type.Equality ((:~:)(..))
 import Data.Word (Word8, Word16, Word32, Word64)
 import qualified Data.Text as T
 import GHC.Exts (IsList, proxy#)
@@ -535,6 +537,9 @@ instance Portray SomeTypeRep where
   portray (SomeTypeRep ty) = Apply
     (TyApp (strAtom "SomeTypeRep") (portrayType ty))
     [strAtom "typeRep"]
+
+instance Portray (a :~: b) where portray Refl = strAtom "Refl"
+instance Portray (Coercion a b) where portray Coercion = strAtom "Coercion"
 
 -- | Portray a list-like type as "fromList [...]".
 instance (IsList a, Portray (Exts.Item a))
