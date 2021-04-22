@@ -37,7 +37,7 @@ module Data.Portray
          ( -- * Syntax Tree
            Portrayal
              ( Atom, Apply, Binop, Tuple, List
-             , LambdaCase, Mconcat, Record, TyApp, TySig
+             , LambdaCase, Record, TyApp, TySig
              , Quot, Unlines, Nest
              , ..
              )
@@ -125,8 +125,6 @@ data PortrayalF a
     -- ^ Render a list of sub-values.
   | LambdaCaseF [(a, a)]
     -- ^ Render a lambda-case expression.
-  | MconcatF [a]
-    -- ^ Render a @<>@-separated list of "monoidy" values.
   | RecordF !a [FactorPortrayal a]
     -- ^ Render a record construction/update syntax.
   | TyAppF !a !a
@@ -178,8 +176,8 @@ newtype Portrayal = Portrayal { unPortrayal :: Fix PortrayalF }
 instance IsString Portrayal where fromString = Atom . T.pack
 
 {-# COMPLETE
-      Atom, Apply, Binop, List, Tuple,
-      Mconcat, Record, TyApp, TySig, Quot
+      Atom, Apply, Binop, Tuple, List, LambdaCase,
+      Record, TyApp, TySig, Quot, Unlines, Nest
   #-}
 
 -- An explicitly-bidirectional pattern synonym that makes it possible to write
@@ -277,14 +275,6 @@ pattern Tuple xs = Portrayal (Fix (TupleF (Coerced xs)))
 -- indices.
 pattern LambdaCase :: [(Portrayal, Portrayal)] -> Portrayal
 pattern LambdaCase xs = Portrayal (Fix (LambdaCaseF (Coerced xs)))
-
--- | A value decomposed into a chain of 'mappend's.
---
--- Given @Mconcat []@, we render @mempty@
---
--- Given @Mconcat [List ["2"], List ["4", "6"]@, we render @[2] <> [4, 6]@
-pattern Mconcat :: [Portrayal] -> Portrayal
-pattern Mconcat xs = Portrayal (Fix (MconcatF (Coerced xs)))
 
 -- | A record literal.
 --

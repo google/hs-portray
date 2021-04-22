@@ -50,7 +50,6 @@ module Data.Portray.Pretty
          ) where
 
 import Data.Functor ((<&>))
-import Data.Maybe (fromMaybe)
 
 import qualified Data.Text as T
 import Text.PrettyPrint (Doc)
@@ -128,15 +127,6 @@ toDocAssocPrecF = \case
   BinopF nm fx x y -> ppBinop (T.unpack nm) fx x y
   TupleF xs -> \_ _ -> ppBulletList "(" "," ")" $ xs <&> \x -> x AssocNope (-1)
   ListF xs -> \_ _ -> ppBulletList "[" "," "]" $ xs <&> \x -> x AssocNope (-1)
-  -- TODO remove?
-  MconcatF xs ->
-    let g
-          :: DocAssocPrec
-          -> Maybe DocAssocPrec -> Maybe DocAssocPrec
-        g l mr = Just $ maybe l (ppBinop "<>" fixity l) mr
-        mempty_ _ _ = "mempty"
-        fixity = Infixity AssocR 6
-    in  fromMaybe mempty_ $ foldr g Nothing xs
   LambdaCaseF xs -> \_ p ->
     P.maybeParens (p >= 10) $
       P.sep
