@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e8a41e45655e2b80bd137abf462b6746beb091376a51f5736221a833c201e05f
+-- hash: 5990b0f7b33df54acea197dfac2e2a920772020d6103347870a9a534000425cb
 
 name:           portray
 version:        0.1.0.0
@@ -46,7 +46,6 @@ library
       Paths_portray
   hs-source-dirs:
       src
-  ghc-options: -Wall -Werror
   build-depends:
       base >=4.12 && <4.16
     , containers >=0.6 && <0.7

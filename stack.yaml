@@ -23,3 +23,6 @@ extra-deps:
   commit: e6d3131dda318173009b5158312ecb6c9db5c35d
   subdirs:
     - wrapped
+
+ghc-options:
+  "$locals": -Wall -Werror
