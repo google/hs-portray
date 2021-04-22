@@ -65,6 +65,7 @@ import Data.Int (Int8, Int16, Int32, Int64)
 import Data.IntMap (IntMap)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
+import Data.Proxy (Proxy)
 import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
 import Data.Set (Set)
@@ -499,6 +500,8 @@ deriving via Wrapped Generic (Either a b)
 
 instance Portray a => Portray [a] where
   portray = List . map portray
+
+deriving via Wrapped Generic (Proxy a) instance Portray (Proxy a)
 
 -- | Portray a list-like type as "fromList [...]".
 instance (IsList a, Portray (Exts.Item a))
