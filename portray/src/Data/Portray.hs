@@ -25,6 +25,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -58,11 +59,13 @@ module Data.Portray
          , Fix(..), cata, portrayCallStack
          ) where
 
+import Data.Char (isAlpha)
 import Data.Coerce (Coercible, coerce)
 import Data.Functor.Identity (Identity(..))
 import Data.Functor.Const (Const(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.IntMap (IntMap)
+import Data.Kind (Type)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Proxy (Proxy)
@@ -87,6 +90,11 @@ import GHC.Generics
 import GHC.Stack (CallStack, SrcLoc, getCallStack, prettySrcLoc)
 import GHC.TypeLits (KnownSymbol, symbolVal')
 import Numeric.Natural (Natural)
+import Type.Reflection
+         ( TyCon, TypeRep, SomeTypeRep(..)
+         , pattern App, pattern Con', pattern Fun
+         , tyConName, typeRep
+         )
 
 import Data.Wrapped (Wrapped(..))
 
@@ -502,6 +510,31 @@ instance Portray a => Portray [a] where
   portray = List . map portray
 
 deriving via Wrapped Generic (Proxy a) instance Portray (Proxy a)
+
+
+instance Portray TyCon where
+  portray con = strAtom $ case tyConName con of
+    c:cs | not (isAlpha c) -> '(':c:cs ++ ")"
+    nm -> nm
+
+portraySomeType :: SomeTypeRep -> Portrayal
+portraySomeType (SomeTypeRep ty) = portrayType ty
+
+portrayType :: TypeRep a -> Portrayal
+portrayType = \case
+  special
+    | SomeTypeRep special == SomeTypeRep (typeRep @Type) -> strAtom "Type"
+  Fun a b -> Binop (T.pack "->") (infixr_ (-1)) (portrayType a) (portrayType b)
+  App f x -> Apply (portrayType f) [portrayType x]
+  Con' con tys -> foldl (\x -> TyApp x . portraySomeType) (portray con) tys
+
+instance Portray (TypeRep a) where
+  portray = TyApp (strAtom "typeRep") . portrayType
+
+instance Portray SomeTypeRep where
+  portray (SomeTypeRep ty) = Apply
+    (TyApp (strAtom "SomeTypeRep") (portrayType ty))
+    [strAtom "typeRep"]
 
 -- | Portray a list-like type as "fromList [...]".
 instance (IsList a, Portray (Exts.Item a))
