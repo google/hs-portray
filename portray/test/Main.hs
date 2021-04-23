@@ -29,7 +29,7 @@ import Type.Reflection (typeRep)
 import Data.Wrapped (Wrapped(..))
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit ((@=?))
+import Test.HUnit ((@?=))
 
 import Data.Portray
 
@@ -55,77 +55,85 @@ data OperatorRecordCon = (:???) { _orcInt :: Int, _orcBool :: Bool }
   deriving Generic
   deriving Portray via Wrapped Generic OperatorRecordCon
 
+-- Yes, this is possible.
+data InfixCon = Int `InfixCon` Bool
+  deriving Generic
+  deriving Portray via Wrapped Generic InfixCon
+
 main :: IO ()
 main = defaultMain
   [ testGroup "atoms"
-      [ testCase "portray @Int" $ portray @Int 0 @=? "0"
-      , testCase "portray @Bool" $ portray True @=? "True"
-      , testCase "portray @Float" $ portray @Float 0.0 @=? "0.0"
-      , testCase "portray @Char" $ portray 'a' @=? "'a'"
-      , testCase "portray @Text" $ portray @Text "aoeu" @=? "\"aoeu\""
-      , testCase "portray @()" $ portray () @=? "()"
+      [ testCase "portray @Int" $ portray @Int 0 @?= "0"
+      , testCase "portray @Bool" $ portray True @?= "True"
+      , testCase "portray @Float" $ portray @Float 0.0 @?= "0.0"
+      , testCase "portray @Char" $ portray 'a' @?= "'a'"
+      , testCase "portray @Text" $ portray @Text "aoeu" @?= "\"aoeu\""
+      , testCase "portray @()" $ portray () @?= "()"
       ]
 
   , testGroup "Maybe"
-      [ testCase "portray Nothing" $ portray (Nothing @Int) @=? "Nothing"
-      , testCase "portray Just" $ portray (Just ()) @=? Apply "Just" ["()"]
+      [ testCase "portray Nothing" $ portray (Nothing @Int) @?= "Nothing"
+      , testCase "portray Just" $ portray (Just ()) @?= Apply "Just" ["()"]
       ]
 
-  , testCase "portray Void" $ const () (\x -> portray @Void x) @=? ()
+  , testCase "portray Void" $ const () (\x -> portray @Void x) @?= ()
 
   , testGroup "tuples"
-      [ testCase "portray (,)" $ portray ('a', 'b') @=? Tuple ["'a'", "'b'"]
+      [ testCase "portray (,)" $ portray ('a', 'b') @?= Tuple ["'a'", "'b'"]
       , testCase "portray (,,)" $
-          portray ('a', 'b', 'c') @=? Tuple ["'a'", "'b'", "'c'"]
+          portray ('a', 'b', 'c') @?= Tuple ["'a'", "'b'", "'c'"]
       ]
 
   , testGroup "reflection"
       [ testCase "portray Int" $
-          portray (typeRep @Int) @=? TyApp "typeRep" "Int"
+          portray (typeRep @Int) @?= TyApp "typeRep" "Int"
       , testCase "portray ->" $
-          portray (typeRep @(Int -> Int)) @=?
+          portray (typeRep @(Int -> Int)) @?=
             TyApp "typeRep" (Binop "->" (infixr_ (-1)) "Int" "Int")
       , testCase "portray Either" $
-          portray (typeRep @(Either Bool Int)) @=?
+          portray (typeRep @(Either Bool Int)) @?=
             TyApp "typeRep" (Apply (Apply "Either" ["Bool"]) ["Int"])
       , testCase "portray DataKinds" $
-          portray (typeRep @'True) @=? TyApp "typeRep" "'True"
+          portray (typeRep @'True) @?= TyApp "typeRep" "'True"
       , testCase "portray TypeNats" $
-          portray (typeRep @4) @=? TyApp "typeRep" "4"
+          portray (typeRep @4) @?= TyApp "typeRep" "4"
       , testCase "portray Symbol" $
-          portray (typeRep @"hi") @=? TyApp "typeRep" "\"hi\""
+          portray (typeRep @"hi") @?= TyApp "typeRep" "\"hi\""
       ]
 
   , testGroup "lists"
-      [ testCase "portray []" $ portray @[()] [] @=? List []
-      , testCase "portray [True]" $ portray [True] @=? List ["True"]
+      [ testCase "portray []" $ portray @[()] [] @?= List []
+      , testCase "portray [True]" $ portray [True] @?= List ["True"]
       ]
 
   , testGroup "IsList"
       [ testCase "portray NonEmpty" $
-          portray (True :| [False]) @=?
+          portray (True :| [False]) @?=
             Apply "fromList" [List ["True", "False"]]
       ]
 
   , testGroup "Generic"
       [ testCase "portray NormalCon" $
-          portray (NormalCon 2 True) @=? Apply "NormalCon" ["2", "True"]
+          portray (NormalCon 2 True) @?= Apply "NormalCon" ["2", "True"]
       , testCase "portray InfixOperatorCon" $
-          portray (2 :? True) @=? Binop ":?" (infixl_ 5) "2" "True"
+          portray (2 :? True) @?= Binop ":?" (infixl_ 5) "2" "True"
       , testCase "portray PrefixOperatorCon" $
-          portray (2 :?? True) @=? Apply "(:??)" ["2", "True"]
+          portray (2 :?? True) @?= Apply "(:??)" ["2", "True"]
       , testCase "portray RecordCon" $
-          portray (RecordCon 2 True) @=?
+          portray (RecordCon 2 True) @?=
             Record "RecordCon"
               [ FactorPortrayal "_rcInt" "2"
               , FactorPortrayal "_rcBool" "True"
               ]
       , testCase "portray OperatorRecordCon" $
-          portray (2 :??? True) @=?
+          portray (2 :??? True) @?=
             Record "(:???)"
               [ FactorPortrayal "_orcInt" "2"
               , FactorPortrayal "_orcBool" "True"
               ]
+      , testCase "portray InfixCon" $
+          portray (InfixCon 2 True) @?=
+            Binop "`InfixCon`" (infixl_ 9) "2" "True"
       -- Covered basic sum types and nullary constructors with Maybe and Void.
       ]
   ]

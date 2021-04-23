@@ -40,3 +40,14 @@ library:
   source-dirs: src
   exposed-modules:
     - Data.Portray.Pretty
+
+tests:
+  PortrayPretty-test:
+    source-dirs: test
+    main: Main.hs
+    dependencies:
+      - portray
+      - portray-pretty
+      - test-framework
+      - test-framework-hunit
+      - HUnit

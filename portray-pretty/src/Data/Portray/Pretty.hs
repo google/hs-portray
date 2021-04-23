@@ -186,7 +186,7 @@ pPrintPortrayal l p x = portrayalToDocPrec x l p
 
 -- | Convenience function for rendering a 'Portrayal' to a 'String'.
 prettyShowPortrayal :: Portrayal -> String
-prettyShowPortrayal p = show (toDocAssocPrec p AssocNope 0)
+prettyShowPortrayal p = show (toDocAssocPrec p AssocNope (-1))
 
 -- | A newtype providing a 'Pretty' instance via 'Portray', for @DerivingVia@.
 --
