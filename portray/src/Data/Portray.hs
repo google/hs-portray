@@ -25,6 +25,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -510,15 +512,18 @@ deriving via Wrapped Generic (a, b, c, d)
   instance (Portray a, Portray b, Portray c, Portray d) => Portray (a, b, c, d)
 deriving via Wrapped Generic (a, b, c, d, e)
   instance (Portray a, Portray b, Portray c, Portray d, Portray e) => Portray (a, b, c, d, e)
-deriving via Wrapped Generic (Identity a)
-  instance Portray a => Portray (Identity a)
-deriving via Wrapped Generic (Const a b)
-  instance Portray a => Portray (Const a b)
 deriving via Wrapped Generic (Maybe a)
   instance Portray a => Portray (Maybe a)
 deriving via Wrapped Generic (Either a b)
   instance (Portray a, Portray b) => Portray (Either a b)
 deriving via Wrapped Generic Void instance Portray Void
+
+-- Aesthetic choice: I'd rather pretend Identity and Const are not records, so
+-- don't derive them via Generic.
+instance Portray a => Portray (Identity a) where
+  portray (Identity x) = Apply "Identity" [portray x]
+instance Portray a => Portray (Const a b) where
+  portray (Const x) = Apply "Const" [portray x]
 
 instance Portray a => Portray [a] where
   portray = List . map portray
@@ -535,27 +540,27 @@ portraySomeType (SomeTypeRep ty) = portrayType ty
 portrayType :: TypeRep a -> Portrayal
 portrayType = \case
   special
-    | SomeTypeRep special == SomeTypeRep (typeRep @Type) -> strAtom "Type"
+    | SomeTypeRep special == SomeTypeRep (typeRep @Type) -> "Type"
   Fun a b -> Binop (T.pack "->") (infixr_ (-1)) (portrayType a) (portrayType b)
   -- TODO(awpr); it'd be nice to coalesce the resulting nested 'Apply's.
   App f x -> Apply (portrayType f) [portrayType x]
   Con' con tys -> foldl (\x -> TyApp x . portraySomeType) (portray con) tys
 
 instance Portray (TypeRep a) where
-  portray = TyApp (strAtom "typeRep") . portrayType
+  portray = TyApp "typeRep" . portrayType
 
 instance Portray SomeTypeRep where
   portray (SomeTypeRep ty) = Apply
-    (TyApp (strAtom "SomeTypeRep") (portrayType ty))
-    [strAtom "typeRep"]
+    (TyApp "SomeTypeRep" (portrayType ty))
+    ["typeRep"]
 
-instance Portray (a :~: b) where portray Refl = strAtom "Refl"
-instance Portray (Coercion a b) where portray Coercion = strAtom "Coercion"
+instance Portray (a :~: b) where portray Refl = "Refl"
+instance Portray (Coercion a b) where portray Coercion = "Coercion"
 
 -- | Portray a list-like type as "fromList [...]".
 instance (IsList a, Portray (Exts.Item a))
       => Portray (Wrapped IsList a) where
-  portray = Apply (strAtom "fromList") . pure . portray . Exts.toList
+  portray = Apply "fromList" . pure . portray . Exts.toList
 
 deriving via Wrapped IsList (IntMap a)
   instance Portray a => Portray (IntMap a)
@@ -574,7 +579,7 @@ deriving via Wrapped IsList (NonEmpty a)
 -- | Construct a 'Portrayal' of a 'CallStack' without the "callStack" prefix.
 portrayCallStack :: [(String, SrcLoc)] -> Portrayal
 portrayCallStack xs = Unlines
-  [ strAtom "GHC.Stack.CallStack:"
+  [ "GHC.Stack.CallStack:"
   , Nest 2 $ Unlines
       [ strAtom (func ++ ", called at " ++ prettySrcLoc loc)
       | (func, loc) <- xs
@@ -583,7 +588,7 @@ portrayCallStack xs = Unlines
 
 instance Portray CallStack where
   portray cs = case getCallStack cs of
-    [] -> strAtom "emptyCallStack"
+    [] -> "emptyCallStack"
     xs -> strQuot "callStack" $ portrayCallStack xs
 
 -- | Fold a @Fix f@ to @a@ given a function to collapse each layer.
