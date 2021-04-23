@@ -18,6 +18,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -59,7 +60,6 @@ module Data.Portray
          , Fix(..), cata, portrayCallStack
          ) where
 
-import Data.Char (isAlpha)
 import Data.Coerce (Coercible, coerce)
 import Data.Functor.Identity (Identity(..))
 import Data.Functor.Const (Const(..))
@@ -76,6 +76,7 @@ import Data.String (IsString(..))
 import Data.Text (Text)
 import Data.Type.Coercion (Coercion(..))
 import Data.Type.Equality ((:~:)(..))
+import Data.Void (Void)
 import Data.Word (Word8, Word16, Word32, Word64)
 import qualified Data.Text as T
 import GHC.Exts (IsList, proxy#)
@@ -83,7 +84,7 @@ import qualified GHC.Exts as Exts
 import GHC.Generics
          ( (:*:)(..), (:+:)(..)
          , Generic(..), Rep
-         , U1(..), K1(..), M1(..)
+         , U1(..), K1(..), M1(..), V1
          , Meta(..), D1, C1, S1
          , Constructor, conName, conFixity
          , Selector, selName
@@ -148,7 +149,7 @@ data PortrayalF a
     -- ^ Render a collection of vertically-aligned lines
   | NestF !Int !a
     -- ^ Indent the subdocument by the given number of columns.
-  deriving (Read, Show, Functor, Foldable, Traversable, Generic)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Generic)
   deriving Portray via Wrapped Generic (PortrayalF a)
 
 instance IsString (PortrayalF a) where fromString = AtomF . T.pack
@@ -158,7 +159,7 @@ data FactorPortrayal a = FactorPortrayal
   { _fpFieldName :: !Text
   , _fpPortrayal :: !a
   }
-  deriving (Read, Show, Functor, Foldable, Traversable, Generic)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Generic)
   deriving Portray via Wrapped Generic (FactorPortrayal a)
 
 
@@ -173,7 +174,13 @@ deriving newtype
   instance (forall a. Portray a => Portray (f a)) => Portray (Fix f)
 
 deriving stock
+  instance (forall a. Read a => Read (f a)) => Read (Fix f)
+
+deriving stock
   instance (forall a. Show a => Show (f a)) => Show (Fix f)
+
+deriving stock
+  instance (forall a. Eq a => Eq (f a)) => Eq (Fix f)
 
 -- | The portrayal of a Haskell runtime value as a pseudo-Haskell syntax tree.
 --
@@ -181,8 +188,8 @@ deriving stock
 -- relatively easily; as such, it provides a /lingua franca/ for integrating
 -- with pretty-printers, without incurring heavyweight dependencies.
 newtype Portrayal = Portrayal { unPortrayal :: Fix PortrayalF }
-  deriving stock Generic
-  deriving newtype (Portray, Show)
+  deriving stock (Eq, Generic)
+  deriving newtype (Portray, Show, Read)
 
 instance IsString Portrayal where fromString = Atom . T.pack
 
@@ -406,6 +413,9 @@ class GPortray f where
 instance GPortray f => GPortray (D1 d f) where
   gportray (M1 x) = gportray x
 
+instance GPortray V1 where
+  gportray x = case x of {}
+
 instance (GPortray f, GPortray g) => GPortray (f :+: g) where
   gportray (L1 f) = gportray f
   gportray (R1 g) = gportray g
@@ -455,6 +465,7 @@ instance (Constructor ('MetaCons n fx 'False), GPortrayProduct f)
         (Infixity (toAssoc lr) (toRational p))
         x
         y
+      (_, _, []) -> strAtom (formatPrefixCon nm)
       _ -> Apply (strAtom (formatPrefixCon nm)) args
    where
     args = _fpPortrayal <$> gportrayProduct x0 []
@@ -507,6 +518,7 @@ deriving via Wrapped Generic (Maybe a)
   instance Portray a => Portray (Maybe a)
 deriving via Wrapped Generic (Either a b)
   instance (Portray a, Portray b) => Portray (Either a b)
+deriving via Wrapped Generic Void instance Portray Void
 
 instance Portray a => Portray [a] where
   portray = List . map portray
@@ -515,9 +527,7 @@ deriving via Wrapped Generic (Proxy a) instance Portray (Proxy a)
 
 
 instance Portray TyCon where
-  portray con = strAtom $ case tyConName con of
-    c:cs | not (isAlpha c) -> '(':c:cs ++ ")"
-    nm -> nm
+  portray = strAtom . formatPrefixCon . tyConName
 
 portraySomeType :: SomeTypeRep -> Portrayal
 portraySomeType (SomeTypeRep ty) = portrayType ty
@@ -527,6 +537,7 @@ portrayType = \case
   special
     | SomeTypeRep special == SomeTypeRep (typeRep @Type) -> strAtom "Type"
   Fun a b -> Binop (T.pack "->") (infixr_ (-1)) (portrayType a) (portrayType b)
+  -- TODO(awpr); it'd be nice to coalesce the resulting nested 'Apply's.
   App f x -> Apply (portrayType f) [portrayType x]
   Con' con tys -> foldl (\x -> TyApp x . portraySomeType) (portray con) tys
 

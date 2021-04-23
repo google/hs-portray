@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5990b0f7b33df54acea197dfac2e2a920772020d6103347870a9a534000425cb
+-- hash: 46be24893e06723572643b8271138d5eeea727023a211077787661037a51eaac
 
 name:           portray
 version:        0.1.0.0
@@ -49,6 +49,24 @@ library
   build-depends:
       base >=4.12 && <4.16
     , containers >=0.6 && <0.7
+    , text >=0.1 && <1.3
+    , wrapped >=0.1 && <0.2
+  default-language: Haskell2010
+
+test-suite Portray-test
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  other-modules:
+      Paths_portray
+  hs-source-dirs:
+      test
+  build-depends:
+      HUnit
+    , base >=4.12 && <4.16
+    , containers >=0.6 && <0.7
+    , portray
+    , test-framework
+    , test-framework-hunit
     , text >=0.1 && <1.3
     , wrapped >=0.1 && <0.2
   default-language: Haskell2010
