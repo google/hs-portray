@@ -80,7 +80,7 @@ ppd x = putStrLn . showDiff x
 
 -- | Pretty-print a diffe between to values using a 'Diff' instance.
 showDiff :: Diff a => a -> a -> String
-showDiff x = maybe "=" prettyShowPortrayal . diff x
+showDiff x = maybe "_" prettyShowPortrayal . diff x
 
 -- | A 'Doc' that varies according to associativity and precedence context.
 type DocAssocPrec = Assoc -> Rational -> Doc

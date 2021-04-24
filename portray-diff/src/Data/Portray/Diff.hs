@@ -219,7 +219,7 @@ instance (Portray a, Diff a) => Diff [a] where
   diff as0 bs0 =
     if all isNothing d
       then Nothing
-      else Just $ List $ fromMaybe "=" <$> d
+      else Just $ List $ fromMaybe "_" <$> d
    where
     -- Extended @zipWith diff@ which doesn't drop on mismatched lengths.
     go :: [a] -> [a] -> [Maybe Portrayal]
