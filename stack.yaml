@@ -17,6 +17,7 @@ resolver: lts-17.9
 packages:
 - portray
 - portray-diff
+- portray-diff-hunit
 - portray-pretty
 
 extra-deps:
