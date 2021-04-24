@@ -1,0 +1,49 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 5e9327992bbe118438cc6a8f862a4be4969aeafc74a03d944ea8fd3728092a86
+
+name:           portray-diff
+version:        0.1.0.0
+synopsis:       Visualize the structural differences between two values.
+description:    This uses @GHC.Generics@ to provide structural diffs between two values in
+                pretty-printed form.  This is primarily useful for test assertions and manual
+                inspection of values.
+category:       Data
+homepage:       https://github.com/google/hs-portray#readme
+bug-reports:    https://github.com/google/hs-portray/issues
+author:         Reiner Pope <reinerp@google.com>, Andrew Pritchard <awpr@google.com>
+maintainer:     Reiner Pope <reinerp@google.com>, Andrew Pritchard <awpr@google.com>
+copyright:      2018-2021 Google LLC
+license:        Apache-2.0
+build-type:     Simple
+extra-source-files:
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/google/hs-portray
+  subdir: portray-diff
+
+library
+  exposed-modules:
+      Data.Portray.Diff
+  other-modules:
+      Paths_portray_diff
+  hs-source-dirs:
+      src
+  build-depends:
+      base
+    , containers
+    , dlist
+    , fin-int
+    , portray
+    , portray-pretty
+    , pretty
+    , primitive
+    , text
+    , wrapped
+  default-language: Haskell2010
