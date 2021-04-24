@@ -18,6 +18,7 @@ packages:
 - portray
 - portray-diff
 - portray-diff-hunit
+- portray-diff-quickcheck
 - portray-pretty
 
 extra-deps:

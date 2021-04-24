@@ -1,0 +1,42 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: b448355c6f9dd5a121001afe6ec0c14fc70068821d3b6170711bc73426c6f863
+
+name:           portray-diff-quickcheck
+version:        0.1.0.0
+synopsis:       Equality assertion functions for QuickCheck based on portray-diff.
+description:    Equality assertion functions for QuickCheck based on portray-diff.
+category:       Data
+homepage:       https://github.com/google/hs-portray#readme
+bug-reports:    https://github.com/google/hs-portray/issues
+author:         Pavel Krajcevski <krajcevski@google.com>
+maintainer:     Andrew Pritchard <awpr@google.com>, Pavel Krajcevski <krajcevski@google.com>
+
+copyright:      2018-2021 Google LLC
+license:        Apache-2.0
+build-type:     Simple
+extra-source-files:
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/google/hs-portray
+  subdir: portray-diff-hunit
+
+library
+  exposed-modules:
+      Data.Portray.Diff.QuickCheck
+  other-modules:
+      Paths_portray_diff_quickcheck
+  hs-source-dirs:
+      src
+  build-depends:
+      QuickCheck
+    , base
+    , portray-diff
+    , portray-pretty
+  default-language: Haskell2010
