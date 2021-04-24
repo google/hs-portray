@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5e9327992bbe118438cc6a8f862a4be4969aeafc74a03d944ea8fd3728092a86
+-- hash: 3be48b43e611f07fe8db867d52fa830aaf8db41a6e27e0799ee516db3bd67d4d
 
 name:           portray-diff
 version:        0.1.0.0
@@ -39,11 +39,7 @@ library
       base
     , containers
     , dlist
-    , fin-int
     , portray
-    , portray-pretty
-    , pretty
-    , primitive
     , text
     , wrapped
   default-language: Haskell2010

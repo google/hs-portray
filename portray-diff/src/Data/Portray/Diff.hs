@@ -19,7 +19,7 @@
 -- @
 --     data Foo = Foo Int | Bar Bool
 --       deriving Generic
---       deriving (Pretty, Diff) via Wrapped Generic Foo
+--       deriving (Portray, Diff) via Wrapped Generic Foo
 -- @
 --
 -- If the type of the compared values has a custom Eq instance, the equality
@@ -50,11 +50,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.Portray.Diff
-         ( Diff(..)
-         , psd, ppd, renderDiff
-         , diffAtom, DiffAtom(..), diffVs
-         ) where
+module Data.Portray.Diff (Diff(..), diffAtom, DiffAtom(..), diffVs) where
 
 import Prelude hiding (zipWith)
 
@@ -73,30 +69,14 @@ import GHC.Exts (IsList(..))
 import qualified GHC.Exts as Exts (toList)
 import GHC.Generics
 import GHC.TypeLits (KnownSymbol, symbolVal)
-import Text.PrettyPrint.HughesPJ (Doc, render, text)
 
 import Data.Portray
          ( Portrayal(..), Portray(..)
          , Infixity(..), Assoc(..), FactorPortrayal(..)
          , showAtom
          )
-import Data.Primitive (SmallArray)
 import qualified Data.DList as D
-import Data.Fin.Int (Fin)
 import Data.Wrapped (Wrapped(..), Wrapped1(..))
-
-import Data.Portray.Pretty (toDocAssocPrec)
-
--- | Convert a diff to a pretty-formatted String.
-psd :: Diff a => a -> a -> String
-psd a b = render . renderDiff $ diff a b
-
--- | Writes a diff to stdout.
-ppd :: Diff a => a -> a -> IO ()
-ppd a b = putStrLn $ psd a b
-
-renderDiff :: Maybe Portrayal -> Doc
-renderDiff = maybe (text "=") (\x -> toDocAssocPrec x AssocNope 0)
 
 class Diff a where
   -- | Returns 'Nothing' when equal; or a 'Portrayal' showing the differences.
@@ -143,8 +123,7 @@ instance (GDiffRecord f, GDiffRecord g) => GDiffRecord (f :*: g) where
 --
 -- This is a separate class from GDiffRecord because it'd be wasteful to
 -- accumulate tons of "_" docs for records with lots of fields and then discard
--- them, and because 'ppFuncApp' wants 'DocPrec' while 'ppRecordLike' wants
--- pre-precedenced 'Doc'.
+-- them.
 class GDiffCtor f where
   gdiffCtor :: f x -> f x -> (Any, D.DList Portrayal)
 
@@ -219,7 +198,6 @@ instance Diff Char where diff = diffAtom
 instance Diff Integer where diff = diffAtom
 instance Diff Float where diff = diffAtom
 instance Diff Double where diff = diffAtom
-instance Diff (Fin n) where diff = diffAtom
 instance Diff Text where diff = diffAtom
 
 newtype DiffAtom a = DiffAtom a
@@ -256,8 +234,6 @@ instance (Portray a, Foldable f, Diff a)
       => Diff (Wrapped1 Foldable f a) where
   diff = diff `on` F.toList
 
-deriving via Wrapped IsList (SmallArray a)
-  instance (Portray a, Diff a) => Diff (SmallArray a)
 deriving via Wrapped IsList (NonEmpty a)
   instance (Portray a, Diff a) => Diff (NonEmpty a)
 deriving via Wrapped IsList (Seq a)
