@@ -58,6 +58,8 @@ import Prelude hiding (zipWith)
 
 import qualified Data.Foldable as F (toList)
 import Data.Function (on)
+import Data.Functor.Const (Const(..))
+import Data.Functor.Identity (Identity(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import qualified Data.IntMap.Strict as IM
 import Data.List.NonEmpty (NonEmpty)
@@ -271,6 +273,9 @@ deriving newtype
            )
         => Diff (Fix f)
 deriving newtype instance Diff Portrayal
+
+deriving via Wrapped Generic (Identity a) instance Diff a => Diff (Identity a)
+deriving via Wrapped Generic (Const a b) instance Diff a => Diff (Const a b)
 
 instance Diff (TypeRep a) where
   diff x y
