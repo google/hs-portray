@@ -59,7 +59,7 @@ module Data.Portray
            -- * Convenience
          , showAtom, strAtom, strQuot, strBinop
            -- * Miscellaneous
-         , Fix(..), cata, portrayCallStack
+         , Fix(..), cata, portrayCallStack, portrayType
          ) where
 
 import Data.Coerce (Coercible, coerce)

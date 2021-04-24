@@ -41,6 +41,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -66,16 +67,18 @@ import Data.Semigroup (Any(..))
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Type.Equality ((:~:)(..))
 import Data.Word (Word8, Word16, Word32, Word64)
 import GHC.Exts (IsList(..))
 import qualified GHC.Exts as Exts (toList)
 import GHC.Generics
 import GHC.TypeLits (KnownSymbol, symbolVal)
+import Type.Reflection (TypeRep, SomeTypeRep(..))
 
 import Data.Portray
          ( Portray(..), Portrayal(..), PortrayalF(..), Fix(..)
          , Infixity(..), Assoc(..), FactorPortrayal(..)
-         , showAtom
+         , showAtom, portrayType
          )
 import qualified Data.DList as D
 import Data.Wrapped (Wrapped(..), Wrapped1(..))
@@ -268,3 +271,18 @@ deriving newtype
            )
         => Diff (Fix f)
 deriving newtype instance Diff Portrayal
+
+instance Diff (TypeRep a) where
+  diff x y
+    | x == y    = Nothing
+    | otherwise = Just $ portray x `diffVs` portray y
+
+instance Diff SomeTypeRep where
+  diff x@(SomeTypeRep tx) y@(SomeTypeRep ty)
+    | x == y = Nothing
+    | otherwise =
+        Just $ Apply
+          (TyApp "SomeTypeRep" (portrayType tx `diffVs` portrayType ty))
+          ["typeRep"]
+
+instance Diff (a :~: b) where diff Refl Refl = Nothing
