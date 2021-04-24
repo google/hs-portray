@@ -35,7 +35,9 @@
 
 module Data.Portray.Pretty
          ( -- * Pretty-Printing
-           prettyShow, pp
+           showPortrayal, pp
+           -- * Diffing
+         , showDiff, ppd
            -- * DerivingVia wrapper
          , WrappedPortray(..)
            -- * Rendering Functions
@@ -55,23 +57,30 @@ import qualified Data.Text as T
 import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as P
 import qualified Text.PrettyPrint.HughesPJ as P (maybeParens)
-import Text.PrettyPrint.HughesPJClass
-         ( Pretty(..), PrettyLevel, prettyNormal
-         )
+import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyNormal)
 
 import Data.Portray
          ( Assoc(..), Infixity(..), FactorPortrayal(..)
          , Portray, Portrayal(..), PortrayalF(..)
          , cata, portray
          )
+import Data.Portray.Diff (Diff(..))
 
 -- | Pretty-print a value to stdout using its 'Portray' instance.
 pp :: Portray a => a -> IO ()
-pp = putStrLn . prettyShow
+pp = putStrLn . showPortrayal
 
 -- | Pretty-print a value using its 'Portray' instance.
-prettyShow :: Portray a => a -> String
-prettyShow = prettyShowPortrayal . portray
+showPortrayal :: Portray a => a -> String
+showPortrayal = prettyShowPortrayal . portray
+
+-- | Pretty-print a diff between two values to stdout using a 'Diff' instance.
+ppd :: Diff a => a -> a -> IO ()
+ppd x = putStrLn . showDiff x
+
+-- | Pretty-print a diffe between to values using a 'Diff' instance.
+showDiff :: Diff a => a -> a -> String
+showDiff x = maybe "=" prettyShowPortrayal . diff x
 
 -- | A 'Doc' that varies according to associativity and precedence context.
 type DocAssocPrec = Assoc -> Rational -> Doc

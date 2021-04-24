@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c85dc9e0bede38757b82cd23fa3fb76d727497a57cb0d946950f15b760e29a64
+-- hash: ab6229825c6c8d8c1d4da556a9444c3c6cf5ce705982b10b58f5bf716a1610fe
 
 name:           portray-pretty
 version:        0.1.0.0
@@ -37,6 +37,7 @@ library
   build-depends:
       base >=4.12 && <4.16
     , portray >=0.1 && <0.2
+    , portray-diff >=0.1 && <0.2
     , pretty >=1.1.3 && <1.2
     , text >=0.1 && <1.3
   default-language: Haskell2010
@@ -53,6 +54,7 @@ test-suite PortrayPretty-test
       HUnit
     , base >=4.12 && <4.16
     , portray
+    , portray-diff >=0.1 && <0.2
     , portray-pretty
     , pretty >=1.1.3 && <1.2
     , test-framework
