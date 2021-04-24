@@ -60,6 +60,7 @@ import Data.Int (Int8, Int16, Int32, Int64)
 import qualified Data.IntMap.Strict as IM
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe, isNothing)
+import Data.Ratio (Ratio)
 import Data.Semigroup (Any(..))
 import Data.Sequence (Seq)
 import Data.Text (Text)
@@ -199,6 +200,7 @@ instance Diff Integer where diff = diffAtom
 instance Diff Float where diff = diffAtom
 instance Diff Double where diff = diffAtom
 instance Diff Text where diff = diffAtom
+instance (Eq a, Portray a) => Diff (Ratio a) where diff = diffAtom
 
 newtype DiffAtom a = DiffAtom a
   deriving newtype (Eq, Portray)

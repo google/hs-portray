@@ -71,7 +71,7 @@ import Data.Kind (Type)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Proxy (Proxy)
-import Data.Ratio (Ratio)
+import Data.Ratio (Ratio, numerator, denominator)
 import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.String (IsString(..))
@@ -502,7 +502,11 @@ deriving via ShowAtom Char      instance Portray Char
 deriving via ShowAtom Text      instance Portray Text
 deriving via ShowAtom Bool      instance Portray Bool
 deriving via ShowAtom ()        instance Portray ()
-deriving via ShowAtom (Ratio a) instance Show a => Portray (Ratio a)
+
+instance Portray a => Portray (Ratio a) where
+  portray x = Binop "%" (infixl_ 7)
+    (portray $ numerator x)
+    (portray $ denominator x)
 
 deriving via Wrapped Generic (a, b)
   instance (Portray a, Portray b) => Portray (a, b)
