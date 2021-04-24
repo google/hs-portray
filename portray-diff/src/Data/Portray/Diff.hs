@@ -44,6 +44,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -72,7 +73,7 @@ import GHC.Generics
 import GHC.TypeLits (KnownSymbol, symbolVal)
 
 import Data.Portray
-         ( Portrayal(..), Portray(..)
+         ( Portray(..), Portrayal(..), PortrayalF(..), Fix(..)
          , Infixity(..), Assoc(..), FactorPortrayal(..)
          , showAtom
          )
@@ -254,3 +255,16 @@ instance (Portray a, Diff a) => Diff (IM.IntMap a) where
     bOnly = IM.map (\b -> "_" `vs` portray b) $ IM.difference bs as
     valDiffs = IM.mapMaybe id $ IM.intersectionWith diff as bs
     allDiffs = IM.unions [aOnly, bOnly, valDiffs]
+
+deriving via Wrapped Generic Assoc instance Diff Assoc
+deriving via Wrapped Generic Infixity instance Diff Infixity
+deriving via Wrapped Generic (FactorPortrayal a)
+  instance Diff a => Diff (FactorPortrayal a)
+deriving via Wrapped Generic (PortrayalF a)
+  instance (Portray a, Diff a) => Diff (PortrayalF a)
+deriving newtype
+  instance ( forall a. (Portray a, Diff a) => Diff (f a)
+           , forall a. Portray a => Portray (f a)
+           )
+        => Diff (Fix f)
+deriving newtype instance Diff Portrayal
