@@ -32,6 +32,7 @@ description: |
   documents/; only a particular flavor of pseudo-Haskell syntax representing
   values and types.
 license: Apache-2.0
+license-file: LICENSE
 author: Andrew Pritchard <awpr@google.com>
 copyright: 2020-2021 Google LLC
 maintainer: Andrew Pritchard <awpr@google.com>

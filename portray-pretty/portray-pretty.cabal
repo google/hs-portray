@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ab6229825c6c8d8c1d4da556a9444c3c6cf5ce705982b10b58f5bf716a1610fe
+-- hash: ec86493a60d09bbf4f6c80bec86549dedd208dda4d0b516372d145ea259a5852
 
 name:           portray-pretty
 version:        0.1.0.0
@@ -17,6 +17,7 @@ author:         Andrew Pritchard <awpr@google.com>
 maintainer:     Andrew Pritchard <awpr@google.com>
 copyright:      2020-2021 Google LLC
 license:        Apache-2.0
+license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     CHANGELOG.md
@@ -33,7 +34,6 @@ library
       Paths_portray_pretty
   hs-source-dirs:
       src
-  ghc-options: -Wall -Werror
   build-depends:
       base >=4.12 && <4.16
     , portray >=0.1 && <0.2
@@ -49,7 +49,6 @@ test-suite PortrayPretty-test
       Paths_portray_pretty
   hs-source-dirs:
       test
-  ghc-options: -Wall -Werror
   build-depends:
       HUnit
     , base >=4.12 && <4.16

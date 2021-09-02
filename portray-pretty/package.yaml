@@ -19,6 +19,7 @@ synopsis: '"pretty" integration for "portray"'
 description: |
   This provides Pretty instances for types with Portray instances.
 license: Apache-2.0
+license-file: LICENSE
 author: Andrew Pritchard <awpr@google.com>
 copyright: 2020-2021 Google LLC
 maintainer: Andrew Pritchard <awpr@google.com>
@@ -27,8 +28,6 @@ github: google/hs-portray/portray-pretty
 # Note: this causes CHANGELOG.md to be included in Hackage distributions.
 extra-source-files:
   CHANGELOG.md
-
-ghc-options: -Wall -Werror
 
 dependencies:
   - base >= 4.12 && < 4.16

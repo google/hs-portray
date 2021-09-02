@@ -4,12 +4,16 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b448355c6f9dd5a121001afe6ec0c14fc70068821d3b6170711bc73426c6f863
+-- hash: 2178c36ac3b2c23f831aa9f6ad19a92a9d2834b38d7c1a84daa659fcf4311bcb
 
 name:           portray-diff-quickcheck
 version:        0.1.0.0
 synopsis:       Equality assertion functions for QuickCheck based on portray-diff.
-description:    Equality assertion functions for QuickCheck based on portray-diff.
+description:    This provides equality assertion functions for QuickCheck that pretty-print
+                structural diffs of the values in question, rather than dumping the entire
+                alues as part of the counterexamples.  This is useful when comparing very
+                large values, since it can otherwise be difficult to tell what changed
+                between expected and actual values.
 category:       Data
 homepage:       https://github.com/google/hs-portray#readme
 bug-reports:    https://github.com/google/hs-portray/issues
@@ -18,6 +22,7 @@ maintainer:     Andrew Pritchard <awpr@google.com>, Pavel Krajcevski <krajcevski
 
 copyright:      2018-2021 Google LLC
 license:        Apache-2.0
+license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     CHANGELOG.md
@@ -35,8 +40,8 @@ library
   hs-source-dirs:
       src
   build-depends:
-      QuickCheck
-    , base
-    , portray-diff
-    , portray-pretty
+      QuickCheck >=2.7 && <2.15
+    , base >=4.12 && <4.16
+    , portray-diff >=0.1 && <0.2
+    , portray-pretty >=0.1 && <0.2
   default-language: Haskell2010

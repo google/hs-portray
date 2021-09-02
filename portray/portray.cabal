@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 46be24893e06723572643b8271138d5eeea727023a211077787661037a51eaac
+-- hash: fc9de5409cf7f63616fc77f69818b1d0770bb638a1137937c066fb8b5edbaf30
 
 name:           portray
 version:        0.1.0.0
@@ -30,6 +30,7 @@ author:         Andrew Pritchard <awpr@google.com>
 maintainer:     Andrew Pritchard <awpr@google.com>
 copyright:      2020-2021 Google LLC
 license:        Apache-2.0
+license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     CHANGELOG.md

@@ -3,3 +3,4 @@
 .*.un~
 .stack-work
 stack*.yaml.lock
+*/dist-newstyle
