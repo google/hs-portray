@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2178c36ac3b2c23f831aa9f6ad19a92a9d2834b38d7c1a84daa659fcf4311bcb
+-- hash: 64c33853407a6ab05094ee9f90b9d34d0481e1fa210c70a468d6f5cdd9f8cf17
 
 name:           portray-diff-quickcheck
 version:        0.1.0.0
@@ -30,7 +30,7 @@ extra-source-files:
 source-repository head
   type: git
   location: https://github.com/google/hs-portray
-  subdir: portray-diff-hunit
+  subdir: portray-diff-quickcheck
 
 library
   exposed-modules:

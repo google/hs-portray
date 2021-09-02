@@ -29,7 +29,7 @@ copyright: 2018-2021 Google LLC
 maintainer: >
   Andrew Pritchard <awpr@google.com>,
   Pavel Krajcevski <krajcevski@google.com>
-github: google/hs-portray/portray-diff-hunit
+github: google/hs-portray/portray-diff-quickcheck
 
 # Note: this causes CHANGELOG.md to be included in Hackage distributions.
 extra-source-files:

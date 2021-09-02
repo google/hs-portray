@@ -21,7 +21,7 @@ import Test.QuickCheck (Property, counterexample)
 import Data.Portray.Diff (Diff(..))
 import Data.Portray.Pretty (prettyShowPortrayal)
 
--- | Same as QuickCheck's ('==='), using 'Diff' to compare and report errors.
+-- | Same as ('Test.QuickCheck.==='), using 'Diff' to compare and report errors.
 infix 4 =-=
 (=-=) :: Diff a => a -> a -> Property
 (=-=) a b = uncurry counterexample $ case diff a b of

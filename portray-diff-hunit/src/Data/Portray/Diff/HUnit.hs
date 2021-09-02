@@ -24,7 +24,8 @@ import Test.HUnit (Assertion, assertFailure)
 import Data.Portray.Diff (Diff(..))
 import Data.Portray.Pretty (portrayalToDoc)
 
--- | Same as 'assertEqual', but using 'Diff' to compare and report errors.
+-- | Same as 'Test.HUnit.assertEqual', but using 'Diff' to compare and report
+-- errors.
 assertNoDiff :: (HasCallStack, Diff a) => String -> a -> a -> Assertion
 assertNoDiff msg a b = case diff a b of
   Nothing -> pure ()
@@ -32,10 +33,10 @@ assertNoDiff msg a b = case diff a b of
     (if null msg then empty else text msg <> colon) $+$
     portrayalToDoc d
 
--- | Same as ('@?='), but using 'Diff' to compare and report errors.
+-- | Same as ('Test.HUnit.@?='), but using 'Diff' to compare and report errors.
 (@?-) :: (HasCallStack, Diff a) => a -> a -> Assertion
 a @?- b = assertNoDiff "" a b
 
--- | Same as ('@-?'), but using 'Diff' to compare and report errors.
+-- | Same as ('Test.HUnit.@=?'), but using 'Diff' to compare and report errors.
 (@-?) :: (HasCallStack, Diff a) => a -> a -> Assertion
 a @-? b = assertNoDiff "" b a

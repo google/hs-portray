@@ -229,7 +229,7 @@ pattern Atom txt = Portrayal (Fix (AtomF txt))
 -- Given:
 --
 -- @
---     Apply "These" ["2", "4"]
+--     Apply \"These\" ["2", "4"]
 -- @
 --
 -- We render something like @These 2 4@, or if line-wrapped:
@@ -266,7 +266,7 @@ pattern Binop nm inf x y =
 -- Given:
 --
 -- @
---     List [Apply "These" ["2", "4"], Apply "That" ["6"]]
+--     List [Apply \"These\" ["2", "4"], Apply \"That\" ["6"]]
 -- @
 --
 -- We render something like:
@@ -301,7 +301,7 @@ pattern LambdaCase xs = Portrayal (Fix (LambdaCaseF (Coerced xs)))
 -- Given:
 --
 -- @
---     Record "Identity" [FactorPortrayal "runIdentity" "2"]
+--     Record \"Identity\" [FactorPortrayal "runIdentity" "2"]
 -- @
 --
 -- We render something like:
@@ -316,19 +316,20 @@ pattern Record x xs = Portrayal (Fix (RecordF (Coerced x) (Coerced xs)))
 
 -- | A type application.
 --
--- Given @TyApp "Proxy" "Int"@, we render @Proxy \@Int@
+-- Given @TyApp \"Proxy\" \"Int\"@, we render @Proxy \@Int@
 pattern TyApp :: Portrayal -> Portrayal -> Portrayal
 pattern TyApp x t = Portrayal (Fix (TyAppF (Coerced x) (Coerced t)))
 
 -- | An explicit type signature.
 --
--- Given @TySig "Proxy" [Apply "Proxy" ["Int"]]@, we render @Proxy :: Proxy Int@
+-- Given @TySig \"Proxy\" [Apply \"Proxy\" ["Int"]]@, we render
+-- @Proxy :: Proxy Int@
 pattern TySig :: Portrayal -> Portrayal -> Portrayal
 pattern TySig x t = Portrayal (Fix (TySigF (Coerced x) (Coerced t)))
 
 -- | A quasiquoter expression.
 --
--- Given @Quot "expr" (Binop "+" _ ["x", "!y"])@, we render @[expr| x + !y |]@
+-- Given @Quot \"expr\" (Binop "+" _ ["x", "!y"])@, we render @[expr| x + !y |]@
 pattern Quot :: Text -> Portrayal -> Portrayal
 pattern Quot t x = Portrayal (Fix (QuotF t (Coerced x)))
 
@@ -541,6 +542,10 @@ instance Portray TyCon where
 portraySomeType :: SomeTypeRep -> Portrayal
 portraySomeType (SomeTypeRep ty) = portrayType ty
 
+-- | Portray the type described by the given 'TypeRep'.
+--
+-- This gives the type-level syntax for the type, as opposed to value-level
+-- syntax that would construct the `TypeRep`.
 portrayType :: TypeRep a -> Portrayal
 portrayType = \case
   special
