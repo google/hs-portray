@@ -22,17 +22,10 @@ packages:
 - portray-pretty
 
 extra-deps:
-- github: google/hs-attenuation
-  commit: 6d9292cc0eaa549821d556405658500e35e9b166
-- github: google/hs-wrapped
-  commit: e6d3131dda318173009b5158312ecb6c9db5c35d
-  subdirs:
-    - wrapped
-- github: google/hs-fin-vec
-  commit: 744585f368e10999227ccb22584733edd7a40e6d
-  subdirs:
-    - fin-int
-    - sint
+- attenuation-0.1.0.0
+- wrapped-0.1.0.0
+- fin-int-0.1.0.0
+- sint-0.1.0.0
 
 ghc-options:
   "$locals": -Wall -Werror
