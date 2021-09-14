@@ -127,6 +127,7 @@ ppBulletList opener separator closer docs =
 toDocAssocPrecF :: PortrayalF DocAssocPrec -> DocAssocPrec
 toDocAssocPrecF = \case
   AtomF txt -> \_ _ -> P.text (T.unpack txt)
+  ApplyF fn [] -> \_ _ -> fn AssocL 10
   ApplyF fn xs -> \lr p ->
     P.maybeParens (not $ fixityCompatible (Infixity AssocL 10) lr p) $
       P.sep

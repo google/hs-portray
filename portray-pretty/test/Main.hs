@@ -37,6 +37,8 @@ main = defaultMain
   , testGroup "Apply"
       [ testCase "nullary" $
           prettyShowPortrayal (Apply "Nothing" []) @?= "Nothing"
+      , testCase "nullary 2" $
+          prettyShowPortrayal (Apply "id" [Apply "Nothing" []]) @?= "id Nothing"
       , testCase "unary" $
           prettyShowPortrayal (Apply "Just" ["2"]) @?= "Just 2"
       , testCase "parens" $
