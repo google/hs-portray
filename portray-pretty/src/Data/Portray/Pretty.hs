@@ -14,14 +14,59 @@
 
 -- | Provides rendering of 'Portrayal' to 'Doc'.
 --
--- The primary intended use of this module is to import 'WrappedPortray' and
--- use it to derive 'Pretty' instances:
+-- There are two intended uses of this module: firstly, to use @pretty@'s
+-- layout and rendering algorithms to render 'Portray' instances, 'Diff's, or
+-- other 'Portrayal's; and secondly, to derive 'Pretty' instances based on
+-- existing 'Portray' instances.  I find the former more ergonomic, but in
+-- established codebases that want to benefit from deriving, the latter may be
+-- more achievable.
+--
+-- The first usage is for codebases with pervasive use of 'Portray', and
+-- involves using e.g. 'pp' and 'ppd' in GHCi, or 'showPortrayal' or 'showDiff'
+-- in application code.  With this usage, anything you want to pretty-print
+-- needs a 'Portray' instance, and the typeclass 'Pretty' is not involved in
+-- any way.  With this approach, pretty-printable types and the types they
+-- include should derive only 'Portray', and pretty-printing should be done
+-- with the aforementioned utility functions:
 --
 -- @
---     data MyRecord = MyRecord { anInt :: Int, anotherRecord :: MyRecord }
---       deriving Generic
---       deriving Portray via Wrapped Generic MyRecord
---       deriving Pretty via WrappedPortray MyRecord
+-- data MyRecord = MyRecord { anInt :: Int, anotherRecord :: MyOtherRecord }
+--   deriving Generic
+--   deriving Portray via Wrapped Generic MyRecord
+--
+-- example = 'showPortrayal' (MyRecord 2 ...)
+-- @
+--
+-- The second usage is to use @portray@'s generic deriving to provide derived
+-- 'Pretty' instances, in a codebase that uses 'Pretty' as the preferred
+-- typeclass for pretty-printable values.  With this usage, things you want to
+-- pretty-print need 'Pretty' instances, and 'Portray' is needed for the
+-- transitive closure of types included in types you want to derive 'Pretty'
+-- instances for.  This may result in many types needing both instances of both
+-- 'Pretty' (for direct pretty-printing) and 'Portray' (for deriving 'Portray'
+-- on downstream types) instances.  Note that with this approach, types that
+-- derive their 'Pretty' instances via 'Portray' will ignore any custom
+-- 'Pretty' instances of nested types, since they recurse to nested 'Portray'
+-- instances instead.
+--
+-- To derive an instance for a pretty-printable type, the type itself should
+-- look like the following:
+--
+-- @
+-- data MyRecord = MyRecord { anInt :: Int, anotherRecord :: MyOtherRecord }
+--   deriving Generic
+--   deriving Portray via Wrapped Generic MyRecord
+--   deriving Pretty via WrappedPortray MyRecord
+--
+-- example = 'Text.PrettyPrint.HughesPJClass.prettyShow' (MyRecord 2 ...)
+-- @
+--
+-- And any types transitively included in it should look like the following:
+--
+-- @
+-- data MyOtherRecord = MyOtherRecord
+--   deriving Generic
+--   deriving Portray via Wrapped Generic MyRecord
 -- @
 --
 -- This module also exports the underlying rendering functionality in a variety
@@ -78,7 +123,7 @@ showPortrayal = prettyShowPortrayal . portray
 ppd :: Diff a => a -> a -> IO ()
 ppd x = putStrLn . showDiff x
 
--- | Pretty-print a diffe between to values using a 'Diff' instance.
+-- | Pretty-print a diff between two values using a 'Diff' instance.
 showDiff :: Diff a => a -> a -> String
 showDiff x = maybe "_" prettyShowPortrayal . diff x
 

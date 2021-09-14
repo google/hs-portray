@@ -5,3 +5,5 @@ Initial version.
 # 0.1.0.1
 
 * Fix needless parentheses around nullary function applications.
+* Improve Haddock documentation.
+* Improve the package description and synopsis.

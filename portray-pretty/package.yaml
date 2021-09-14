@@ -13,13 +13,18 @@
 # limitations under the License.
 
 name: portray-pretty
-version: 0.1.0.0
+version: 0.1.0.1
 category: Text
-synopsis: '"pretty" integration for "portray"'
+synopsis: A portray backend using the pretty package.
 description: |
-  This provides Pretty instances for types with Portray instances.
+  This provides a <https://hackage.haskell.org/package/pretty pretty> backend
+  for <https://hackage.haskell.org/package/portray portray>, along with
+  derivable 'Text.PrettyPrint.HughesPJClass.Pretty' instances for types with
+  'Data.Portray.Portray' instances.
+
+  See also
+  <https://hackage.haskell.org/package/portray-prettyprinter portray-prettyprinter>.
 license: Apache-2.0
-license-file: LICENSE
 author: Andrew Pritchard <awpr@google.com>
 copyright: 2020-2021 Google LLC
 maintainer: Andrew Pritchard <awpr@google.com>

@@ -4,12 +4,18 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ec86493a60d09bbf4f6c80bec86549dedd208dda4d0b516372d145ea259a5852
+-- hash: 93aaf5ac8b3c548a84614877b51df32bc719f8111b0fd163f33fee8d6c7daf48
 
 name:           portray-pretty
-version:        0.1.0.0
-synopsis:       "pretty" integration for "portray"
-description:    This provides Pretty instances for types with Portray instances.
+version:        0.1.0.1
+synopsis:       A portray backend using the pretty package.
+description:    This provides a <https://hackage.haskell.org/package/pretty pretty> backend
+                for <https://hackage.haskell.org/package/portray portray>, along with
+                derivable 'Text.PrettyPrint.HughesPJClass.Pretty' instances for types with
+                'Data.Portray.Portray' instances.
+                .
+                See also
+                <https://hackage.haskell.org/package/portray-prettyprinter portray-prettyprinter>.
 category:       Text
 homepage:       https://github.com/google/hs-portray#readme
 bug-reports:    https://github.com/google/hs-portray/issues
