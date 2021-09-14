@@ -20,6 +20,7 @@ packages:
 - portray-diff-hunit
 - portray-diff-quickcheck
 - portray-pretty
+- portray-prettyprinter
 
 extra-deps:
 - attenuation-0.1.0.0
