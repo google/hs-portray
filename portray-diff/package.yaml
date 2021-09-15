@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: portray-diff
-version: 0.1.0.0
+version: 0.1.0.1
 category: Data
 synopsis: Visualize the structural differences between two values.
 description: |
@@ -35,7 +35,7 @@ dependencies:
   - base >= 4.12 && < 4.16
   - containers >= 0.6 && < 0.7
   - dlist >= 0.6 && < 1.1
-  - portray >= 0.1 && < 0.2
+  - portray >= 0.2 && < 0.3
   - text >= 0.1 && < 1.3
   - wrapped >= 0.1 && < 0.2
 

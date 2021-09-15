@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: portray-prettyprinter
-version: 0.1.0
+version: 0.1.1
 category: Text
 synopsis: A portray backend using the prettyprinter package.
 description: |
@@ -42,7 +42,7 @@ extra-source-files:
 
 dependencies:
   - base >= 4.12 && < 4.16
-  - portray >= 0.1 && < 0.2
+  - portray >= 0.2 && < 0.3
   - portray-diff >= 0.1 && < 0.2
   - prettyprinter >= 1.7 && < 1.8
   - text >= 0.1 && < 1.3

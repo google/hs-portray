@@ -106,6 +106,7 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyNormal)
 
 import Data.Portray
          ( Assoc(..), Infixity(..), FactorPortrayal(..)
+         , Ident(..), IdentKind(..)
          , Portray, Portrayal(..), PortrayalF(..)
          , cata, portray
          )
@@ -145,13 +146,33 @@ matchCtx ctx assoc
 portrayalToDoc :: Portrayal -> Doc
 portrayalToDoc t = portrayalToDocPrec t prettyNormal (-1)
 
+ppInfix :: Ident -> Doc
+ppInfix (Ident k nm) = case k of
+  OpConIdent -> nmDoc
+  OpIdent -> nmDoc
+  VarIdent -> wrappedNm
+  ConIdent -> wrappedNm
+ where
+  nmDoc = P.text $ T.unpack nm
+  wrappedNm = P.char '`' <> nmDoc <> P.char '`'
+
+ppPrefix :: Ident -> Doc
+ppPrefix (Ident k nm) = case k of
+  OpConIdent -> wrappedNm
+  OpIdent -> wrappedNm
+  VarIdent -> nmDoc
+  ConIdent -> nmDoc
+ where
+  nmDoc = P.text $ T.unpack nm
+  wrappedNm = P.parens nmDoc
+
 ppBinop
-  :: String
+  :: Ident
   -> Infixity
   -> DocAssocPrec -> DocAssocPrec -> DocAssocPrec
 ppBinop nm fx@(Infixity assoc opPrec) x y lr p =
   P.maybeParens (not $ fixityCompatible fx lr p) $ P.sep
-    [ x (matchCtx AssocL assoc) opPrec P.<+> P.text nm
+    [ x (matchCtx AssocL assoc) opPrec P.<+> ppInfix nm
     , P.nest 2 $ y (matchCtx AssocR assoc) opPrec
     ]
 
@@ -171,7 +192,12 @@ ppBulletList opener separator closer docs =
 -- | Render one layer of 'PortrayalF' to 'DocAssocPrec'.
 toDocAssocPrecF :: PortrayalF DocAssocPrec -> DocAssocPrec
 toDocAssocPrecF = \case
-  AtomF txt -> \_ _ -> P.text (T.unpack txt)
+  NameF nm -> \_ _ -> ppPrefix nm
+  LitIntF x -> \_ _ -> P.text (show x)
+  LitRatF x -> \_ _ -> P.text (show (fromRational x :: Double))
+  LitStrF x -> \_ _ -> P.text (show x)
+  LitCharF x -> \_ _ -> P.text (show x)
+  OpaqueF txt -> \_ _ -> P.text (T.unpack txt)
   ApplyF fn [] -> \_ _ -> fn AssocL 10
   ApplyF fn xs -> \lr p ->
     P.maybeParens (not $ fixityCompatible (Infixity AssocL 10) lr p) $
@@ -179,7 +205,7 @@ toDocAssocPrecF = \case
         [ fn AssocL 10
         , P.nest 2 $ P.sep $ xs <&> \docprec -> docprec AssocR 10
         ]
-  BinopF nm fx x y -> ppBinop (T.unpack nm) fx x y
+  BinopF nm fx x y -> ppBinop nm fx x y
   TupleF xs -> \_ _ -> ppBulletList "(" "," ")" $ xs <&> \x -> x AssocNope (-1)
   ListF xs -> \_ _ -> ppBulletList "[" "," "]" $ xs <&> \x -> x AssocNope (-1)
   LambdaCaseF xs -> \_ p ->

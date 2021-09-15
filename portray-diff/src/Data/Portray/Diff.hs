@@ -43,6 +43,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -71,16 +72,17 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Type.Equality ((:~:)(..))
 import Data.Word (Word8, Word16, Word32, Word64)
-import GHC.Exts (IsList(..))
+import GHC.Exts (IsList(..), proxy#)
 import qualified GHC.Exts as Exts (toList)
 import GHC.Generics
-import GHC.TypeLits (KnownSymbol, symbolVal)
+import GHC.TypeLits (KnownSymbol, symbolVal')
 import Type.Reflection (TypeRep, SomeTypeRep(..))
 
 import Data.Portray
          ( Portray(..), Portrayal(..), PortrayalF(..), Fix(..)
+         , IdentKind(..), Ident(..)
          , Infixity(..), Assoc(..), FactorPortrayal(..)
-         , showAtom, portrayType
+         , showAtom, portrayType, prefixCon
          )
 import qualified Data.DList as D
 import Data.Wrapped (Wrapped(..), Wrapped1(..))
@@ -95,7 +97,7 @@ instance (Generic a, GDiff a (Rep a)) => Diff (Wrapped Generic a) where
   diff (Wrapped x) (Wrapped y) = gdiff x y (from x) (from y)
 
 vs, diffVs :: Portrayal -> Portrayal -> Portrayal
-vs a b = Binop "/=" (Infixity AssocNope 4) a b
+vs a b = Binop (Ident OpIdent "/=") (Infixity AssocNope 4) a b
 diffVs = vs
 
 -- | Diff on an atomic type, just by using the Eq and Portray instances without
@@ -140,7 +142,7 @@ instance GDiffCtor U1 where
 
 instance Diff a => GDiffCtor (S1 s (K1 i a)) where
   gdiffCtor (M1 (K1 a)) (M1 (K1 b)) = case diff a b of
-    Nothing -> (mempty, D.singleton "_")
+    Nothing -> (mempty, D.singleton (Opaque "_"))
     Just d -> (Any True, D.singleton d)
 
 instance (GDiffCtor f, GDiffCtor g) => GDiffCtor (f :*: g) where
@@ -153,18 +155,19 @@ instance (KnownSymbol n, GDiffRecord f)
       => GDiff a (C1 ('MetaCons n fx 'True) f) where
   gdiff _ _ (M1 a) (M1 b) = case D.toList (gdiffRecord a b) of
     [] -> Nothing
-    ds -> Just $ Record (Atom $ T.pack $ symbolVal @n undefined) ds
+    ds -> Just $ Record (prefixCon $ symbolVal' @n proxy#) ds
 
 instance (KnownSymbol n, GDiffCtor f)
       => GDiff a (C1 ('MetaCons n fx 'False) f) where
   gdiff _ _ (M1 a) (M1 b) = case gdiffCtor a b of
     (Any False, _ ) -> Nothing
     (Any True , ds) -> Just $ case nm of
-      -- Print tuple constructors with tuple syntax.
+      -- Print tuple constructors with tuple syntax.  Ignore infix
+      -- constructors, since they'd make for pretty hard-to-read diffs.
       '(':',':_ -> Tuple (D.toList ds)
-      _ -> Apply (Atom $ T.pack nm) (D.toList ds)
+      _ -> Apply (prefixCon nm) (D.toList ds)
    where
-    nm = symbolVal @n undefined
+    nm = symbolVal' @n proxy#
 
 instance (Portray a, GDiff a f, GDiff a g) => GDiff a (f :+: g) where
   gdiff origA origB a b = case (a, b) of
@@ -219,15 +222,15 @@ instance (Portray a, Diff a) => Diff [a] where
   diff as0 bs0 =
     if all isNothing d
       then Nothing
-      else Just $ List $ fromMaybe "_" <$> d
+      else Just $ List $ fromMaybe (Opaque "_") <$> d
    where
     -- Extended @zipWith diff@ which doesn't drop on mismatched lengths.
     go :: [a] -> [a] -> [Maybe Portrayal]
     go [] [] = []
     go (a:as) [] =
-      Just (portray a `vs` "_") : go as []
+      Just (portray a `vs` Opaque "_") : go as []
     go [] (b:bs) =
-      Just ("_" `vs` portray b) : go [] bs
+      Just (Opaque "_" `vs` portray b) : go [] bs
     go (a:as) (b:bs) = diff a b : go as bs
 
     d = go as0 bs0
@@ -256,12 +259,14 @@ instance (Portray a, Diff a) => Diff (IM.IntMap a) where
     -- Note: we could have used 'align', but "these" has a ton of dependencies
     -- and it'd only save a few lines of code.
     aOnly, bOnly, valDiffs, allDiffs :: IM.IntMap Portrayal
-    aOnly = IM.map (\a -> portray a `vs` "_") $ IM.difference as bs
-    bOnly = IM.map (\b -> "_" `vs` portray b) $ IM.difference bs as
+    aOnly = IM.map (\a -> portray a `vs` Opaque "_") $ IM.difference as bs
+    bOnly = IM.map (\b -> Opaque "_" `vs` portray b) $ IM.difference bs as
     valDiffs = IM.mapMaybe id $ IM.intersectionWith diff as bs
     allDiffs = IM.unions [aOnly, bOnly, valDiffs]
 
 deriving via Wrapped Generic Assoc instance Diff Assoc
+deriving via Wrapped Generic IdentKind instance Diff IdentKind
+deriving via Wrapped Generic Ident instance Diff Ident
 deriving via Wrapped Generic Infixity instance Diff Infixity
 deriving via Wrapped Generic (FactorPortrayal a)
   instance Diff a => Diff (FactorPortrayal a)
@@ -287,7 +292,9 @@ instance Diff SomeTypeRep where
     | x == y = Nothing
     | otherwise =
         Just $ Apply
-          (TyApp "SomeTypeRep" (portrayType tx `diffVs` portrayType ty))
-          ["typeRep"]
+          (TyApp
+            (Name $ Ident ConIdent "SomeTypeRep")
+            (portrayType tx `diffVs` portrayType ty))
+          [Name $ Ident VarIdent "typeRep"]
 
 instance Diff (a :~: b) where diff Refl Refl = Nothing

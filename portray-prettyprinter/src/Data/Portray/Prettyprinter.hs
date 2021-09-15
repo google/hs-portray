@@ -105,6 +105,7 @@ import qualified Prettyprinter.Render.Text as R
 
 import Data.Portray
          ( Assoc(..), Infixity(..), FactorPortrayal(..)
+         , Ident(..), IdentKind(..)
          , Portray, Portrayal(..), PortrayalF(..)
          , cata, portray
          )
@@ -156,13 +157,33 @@ text = pretty
 char :: Char -> Doc ann
 char = pretty
 
+ppInfix :: Ident -> Doc ann
+ppInfix (Ident k nm) = case k of
+  OpConIdent -> nmDoc
+  OpIdent -> nmDoc
+  VarIdent -> wrappedNm
+  ConIdent -> wrappedNm
+ where
+  nmDoc = text nm
+  wrappedNm = char '`' <> nmDoc <> char '`'
+
+ppPrefix :: Ident -> Doc ann
+ppPrefix (Ident k nm) = case k of
+  OpConIdent -> wrappedNm
+  OpIdent -> wrappedNm
+  VarIdent -> nmDoc
+  ConIdent -> nmDoc
+ where
+  nmDoc = text nm
+  wrappedNm = P.parens nmDoc
+
 ppBinop
-  :: Text
+  :: Ident
   -> Infixity
   -> DocAssocPrec ann -> DocAssocPrec ann -> DocAssocPrec ann
 ppBinop nm fx@(Infixity assoc opPrec) x y lr p =
   maybeParens (not $ fixityCompatible fx lr p) $ P.nest 2 $ P.sep
-    [ x (matchCtx AssocL assoc) opPrec P.<+> text nm
+    [ x (matchCtx AssocL assoc) opPrec P.<+> ppInfix nm
     , y (matchCtx AssocR assoc) opPrec
     ]
 
@@ -183,7 +204,12 @@ ppBulletList opener separator closer (doc:docs) =
 -- | Render one layer of 'PortrayalF' to 'DocAssocPrec'.
 toDocAssocPrecF :: PortrayalF (DocAssocPrec ann) -> DocAssocPrec ann
 toDocAssocPrecF = \case
-  AtomF txt -> \_ _ -> text txt
+  NameF nm -> \_ _ -> ppPrefix nm
+  LitIntF x -> \_ _ -> pretty x
+  LitRatF x -> \_ _ -> pretty (fromRational x :: Double)
+  LitStrF x -> \_ _ -> pretty (show x)   -- Pretty String instance is unquoted
+  LitCharF x -> \_ _ -> pretty (show x)  -- Likewise Char
+  OpaqueF txt -> \_ _ -> text txt
   ApplyF fn [] -> \_ _ -> fn AssocL 10
   ApplyF fn xs -> \lr p ->
     maybeParens (not $ fixityCompatible (Infixity AssocL 10) lr p) $

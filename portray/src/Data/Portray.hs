@@ -40,28 +40,32 @@
 module Data.Portray
          ( -- * Syntax Tree
            Portrayal
-             ( Atom, Apply, Binop, Tuple, List
+             ( Name, LitInt, LitRat, LitStr, LitChar, Opaque
+             , Apply, Binop, Tuple, List
              , LambdaCase, Record, TyApp, TySig
              , Quot, Unlines, Nest
              , ..
              )
          , FactorPortrayal(..)
+         , IdentKind(..), Ident(..)
            -- ** Operator Fixity
          , Assoc(..), Infixity(..), infix_, infixl_, infixr_
            -- ** Base Functor
          , PortrayalF(..)
            -- * Class
          , Portray(..)
-           -- ** Via Show
-         , ShowAtom(..)
            -- ** Via Generic
          , GPortray(..), GPortrayProduct(..)
+           -- ** Via Show, Integral, and Real
+         , PortrayIntLit(..), PortrayRatLit(..), ShowAtom(..)
            -- * Convenience
          , showAtom, strAtom, strQuot, strBinop
            -- * Miscellaneous
          , Fix(..), cata, portrayCallStack, portrayType
+         , conIdent, prefixCon
          ) where
 
+import Data.Char (isDigit)
 import Data.Coerce (Coercible, coerce)
 import Data.Functor.Identity (Identity(..))
 import Data.Functor.Const (Const(..))
@@ -74,7 +78,6 @@ import Data.Proxy (Proxy)
 import Data.Ratio (Ratio, numerator, denominator)
 import Data.Sequence (Seq)
 import Data.Set (Set)
-import Data.String (IsString(..))
 import Data.Text (Text)
 import Data.Type.Coercion (Coercion(..))
 import Data.Type.Equality ((:~:)(..))
@@ -125,36 +128,54 @@ infixl_ = Infixity AssocL
 infixr_ :: Rational -> Infixity
 infixr_ = Infixity AssocR
 
+-- | The kind of identifier a particular 'Ident' represents.
+data IdentKind = VarIdent | ConIdent | OpIdent | OpConIdent
+  deriving (Eq, Ord, Read, Show, Generic)
+  deriving Portray via Wrapped Generic IdentKind
+
+-- | An identifier or operator name.
+data Ident = Ident !IdentKind !Text
+  deriving (Eq, Ord, Read, Show, Generic)
+  deriving Portray via Wrapped Generic Ident
+
 -- | A single level of pseudo-Haskell expression; used to define 'Portrayal'.
 data PortrayalF a
-  = AtomF !Text
-    -- ^ Render this text directly.
+  = NameF {-# UNPACK #-} !Ident
+    -- ^ An identifier, including variable, constructor and operator names.
+  | LitIntF !Integer
+    -- ^ An integral literal.  e.g. @42@
+  | LitRatF {-# UNPACK #-} !Rational
+    -- ^ A rational / floating-point literal.  e.g. @42.002@
+  | LitStrF !Text
+    -- ^ A string literal, stored without escaping or quotes.  e.g. @"hi"@
+  | LitCharF !Char
+    -- ^ A character literal.  e.g. @'a'@
+  | OpaqueF !Text
+    -- ^ A chunk of opaque text.  e.g. @abc"]def@
   | ApplyF !a [a]
-    -- ^ Render a function application to several arguments.
-  | BinopF !Text !Infixity !a !a
-    -- ^ Render a binary infix operator application to two arguments.
+    -- ^ A function application to several arguments.
+  | BinopF !Ident !Infixity !a !a
+    -- ^ A binary infix operator application to two arguments.
   | TupleF [a]
-    -- ^ Render a tuple of sub-values.
+    -- ^ A tuple of sub-values.
   | ListF [a]
-    -- ^ Render a list of sub-values.
+    -- ^ A list of sub-values.
   | LambdaCaseF [(a, a)]
-    -- ^ Render a lambda-case expression.
+    -- ^ A lambda-case expression.
   | RecordF !a [FactorPortrayal a]
-    -- ^ Render a record construction/update syntax.
+    -- ^ A record construction/update syntax.
   | TyAppF !a !a
-    -- ^ Render a TypeApplication.
+    -- ^ A TypeApplication.
   | TySigF !a !a
-    -- ^ Render a term with explicit type signature.
+    -- ^ A term with explicit type signature.
   | QuotF !Text !a
-    -- ^ Render a quasiquoter term with the given name.
+    -- ^ A quasiquoter term with the given name.
   | UnlinesF [a]
-    -- ^ Render a collection of vertically-aligned lines
+    -- ^ A collection of vertically-aligned lines
   | NestF !Int !a
-    -- ^ Indent the subdocument by the given number of columns.
+    -- ^ A subdocument indented by the given number of columns.
   deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Generic)
   deriving Portray via Wrapped Generic (PortrayalF a)
-
-instance IsString (PortrayalF a) where fromString = AtomF . T.pack
 
 -- | A 'Portrayal' along with a field name; one piece of a record literal.
 data FactorPortrayal a = FactorPortrayal
@@ -193,11 +214,9 @@ newtype Portrayal = Portrayal { unPortrayal :: Fix PortrayalF }
   deriving stock (Eq, Generic)
   deriving newtype (Portray, Show, Read)
 
-instance IsString Portrayal where fromString = Atom . T.pack
-
 {-# COMPLETE
-      Atom, Apply, Binop, Tuple, List, LambdaCase,
-      Record, TyApp, TySig, Quot, Unlines, Nest
+      Name, LitInt, LitRat, LitStr, LitChar, Opaque, Apply, Binop, Tuple,
+      List, LambdaCase, Record, TyApp, TySig, Quot, Unlines, Nest
   #-}
 
 -- An explicitly-bidirectional pattern synonym that makes it possible to write
@@ -212,11 +231,40 @@ pattern Coerced x <- (coerce -> x)
 -- A collection of pattern synonyms to hide the fact that we're using Fix
 -- internally.
 
--- | A single chunk of text included directly in the pretty-printed output.
+-- | An identifier, including variable, constructor, and operator names.
 --
--- This is used for things like literals and constructor names.
-pattern Atom :: Text -> Portrayal
-pattern Atom txt = Portrayal (Fix (AtomF txt))
+-- The 'IdentKind' distinguishes constructors, operators, etc. to enable
+-- backends to do things like syntax highlighting, without needing to engage in
+-- text manipulation to figure out syntax classes.
+pattern Name :: Ident -> Portrayal
+pattern Name nm = Portrayal (Fix (NameF nm))
+
+-- | An integral literal.
+pattern LitInt :: Integer -> Portrayal
+pattern LitInt x = Portrayal (Fix (LitIntF x))
+
+
+-- | A rational / floating-point literal.
+pattern LitRat :: Rational -> Portrayal
+pattern LitRat x = Portrayal (Fix (LitRatF x))
+
+-- | A string literal.
+--
+-- Some backends may be capable of flowing these onto multiple lines
+-- automatically, which they wouldn't be able to do with opaque text.
+pattern LitStr :: Text -> Portrayal
+pattern LitStr x = Portrayal (Fix (LitStrF x))
+
+-- | A character literal.
+pattern LitChar :: Char -> Portrayal
+pattern LitChar x = Portrayal (Fix (LitCharF x))
+
+-- | An opaque chunk of text included directly in the pretty-printed output.
+--
+-- This is used by things like 'strAtom' that don't understand their contents,
+-- and will miss out on any syntax-aware features provided by backends.
+pattern Opaque :: Text -> Portrayal
+pattern Opaque txt = Portrayal (Fix (OpaqueF txt))
 
 -- | A function or constructor application of arbitrary arity.
 --
@@ -250,14 +298,15 @@ pattern Apply f xs = Portrayal (Fix (ApplyF (Coerced f) (Coerced xs)))
 -- Given:
 --
 -- @
---     Binop "+" (infixl_ 6)
---       [ Binop "+" (infixl_ 6) ["2", "4"]
+--     Binop OpIdent "+" (infixl_ 6)
+--       [ Binop OpIdent "+" (infixl_ 6) ["2", "4"]
 --       , "6"
 --       ]
 -- @
 --
 -- We render something like: @2 + 4 + 6@
-pattern Binop :: Text -> Infixity -> Portrayal -> Portrayal -> Portrayal
+pattern Binop
+  :: Ident -> Infixity -> Portrayal -> Portrayal -> Portrayal
 pattern Binop nm inf x y =
   Portrayal (Fix (BinopF nm inf (Coerced x) (Coerced y)))
 
@@ -377,15 +426,16 @@ showAtom = strAtom . show
 --
 -- Note if you just want a string literal, @OverloadedStrings@ is supported.
 strAtom :: String -> Portrayal
-strAtom = Atom . T.pack
+strAtom = Opaque . T.pack
 
 -- | Convenience for building a 'Quot' from a 'String'.
 strQuot :: String -> Portrayal -> Portrayal
 strQuot = Quot . T.pack
 
 -- | Convenience for building a 'Binop' with a 'String' operator name.
-strBinop :: String -> Infixity -> Portrayal -> Portrayal -> Portrayal
-strBinop = Binop . T.pack
+strBinop
+  :: IdentKind -> String -> Infixity -> Portrayal -> Portrayal -> Portrayal
+strBinop k = Binop . Ident k . T.pack
 
 -- | Generics-based deriving of 'Portray' for product types.
 --
@@ -423,8 +473,11 @@ instance (GPortray f, GPortray g) => GPortray (f :+: g) where
   gportray (L1 f) = gportray f
   gportray (R1 g) = gportray g
 
--- Wrap operator constructor names (which must start with a colon) in parens,
--- for use in function application context.  This arises in four scenarios:
+-- Detect operator constructor names (which must start with a colon) vs.
+-- alphanumeric constructor names.
+--
+-- Operator constructor names in prefix application context arise in four
+-- scenarios:
 --
 -- - The constructor has fewer than two arguments: @(:%) :: Int -> Thing@ gives
 -- e.g. "(:%) 42".
@@ -435,16 +488,18 @@ instance (GPortray f, GPortray g) => GPortray (f :+: g) where
 -- - The constructor is declared in record notation:
 -- @data Thing = (:%) { _x :: Int, _y :: Int }@ gives e.g.
 -- "(:%) { _x = 2, _y = 4 }".
-formatPrefixCon :: String -> String
-formatPrefixCon (':' : rest) = "(:" ++ rest ++ ")"
-formatPrefixCon con = con
+--
+-- Alphanumeric constructor names in infix application context only arise from
+-- datatypes with alphanumeric constructors declared in infix syntax, e.g.
+-- "data Thing = Int `Thing` Int".
+detectConKind :: String -> IdentKind
+detectConKind = \case (':':_) -> OpConIdent; _ -> ConIdent
 
--- Wrap alphanumeric constructor names in backquotes, for use in infix operator
--- context.  This only arises from datatypes with alphanumeric constructors
--- declared in infix syntax, e.g. "data Thing = Int `Thing` Int".
-formatInfixCon :: String -> String
-formatInfixCon (':' : rest) = ':' : rest
-formatInfixCon con = '`' : con ++ "`"
+conIdent :: String -> Ident
+conIdent con = Ident (detectConKind con) (T.pack con)
+
+prefixCon :: String -> Portrayal
+prefixCon = Name . conIdent
 
 toAssoc :: Associativity -> Assoc
 toAssoc = \case
@@ -455,7 +510,7 @@ toAssoc = \case
 instance (KnownSymbol n, GPortrayProduct f)
       => GPortray (C1 ('MetaCons n fx 'True) f) where
   gportray (M1 x) = Record
-    (strAtom (formatPrefixCon $ symbolVal' @n proxy#))
+    (prefixCon $ symbolVal' @n proxy#)
     (gportrayProduct x [])
 
 instance (Constructor ('MetaCons n fx 'False), GPortrayProduct f)
@@ -464,12 +519,12 @@ instance (Constructor ('MetaCons n fx 'False), GPortrayProduct f)
     case (nm, conFixity @('MetaCons n fx 'False) undefined, args) of
       ('(' : ',' : _, _, _) -> Tuple args
       (_, Infix lr p, [x, y]) -> Binop
-        (T.pack $ formatInfixCon nm)
+        (conIdent nm)
         (Infixity (toAssoc lr) (toRational p))
         x
         y
-      (_, _, []) -> strAtom (formatPrefixCon nm)
-      _ -> Apply (strAtom (formatPrefixCon nm)) args
+      (_, _, []) -> prefixCon nm
+      _ -> Apply (prefixCon nm) args
    where
     args = _fpPortrayal <$> gportrayProduct x0 []
     nm = conName @('MetaCons n fx 'False) undefined
@@ -477,35 +532,52 @@ instance (Constructor ('MetaCons n fx 'False), GPortrayProduct f)
 instance (Generic a, GPortray (Rep a)) => Portray (Wrapped Generic a) where
   portray (Wrapped x) = gportray (from x)
 
+-- | A newtype wrapper providing a 'Portray' instance via 'Integral'.
+newtype PortrayIntLit a = PortrayIntLit a
+
+instance Integral a => Portray (PortrayIntLit a) where
+  portray (PortrayIntLit x) = LitInt (toInteger x)
+
+deriving via PortrayIntLit Int       instance Portray Int
+deriving via PortrayIntLit Int8      instance Portray Int8
+deriving via PortrayIntLit Int16     instance Portray Int16
+deriving via PortrayIntLit Int32     instance Portray Int32
+deriving via PortrayIntLit Int64     instance Portray Int64
+deriving via PortrayIntLit Integer   instance Portray Integer
+
+deriving via PortrayIntLit Word      instance Portray Word
+deriving via PortrayIntLit Word8     instance Portray Word8
+deriving via PortrayIntLit Word16    instance Portray Word16
+deriving via PortrayIntLit Word32    instance Portray Word32
+deriving via PortrayIntLit Word64    instance Portray Word64
+deriving via PortrayIntLit Natural   instance Portray Natural
+
+-- | A newtype wrapper providing a 'Portray' instance via 'Real'.
+newtype PortrayRatLit a = PortrayRatLit a
+
+instance Real a => Portray (PortrayRatLit a) where
+  portray (PortrayRatLit x) = LitRat (toRational x)
+
+deriving via PortrayRatLit Float     instance Portray Float
+deriving via PortrayRatLit Double    instance Portray Double
+
 -- | A newtype wrapper providing a 'Portray' instance via 'showAtom'.
+--
+-- Beware that instances made this way will not be subject to internal
+-- formatting, and will be shown as plain text all on one line.  It's
+-- recommended to derive instances via @'Wrapped' 'Generic'@ or hand-write more
+-- detailed instances instead.
 newtype ShowAtom a = ShowAtom { unShowAtom :: a }
 
 instance Show a => Portray (ShowAtom a) where
   portray = showAtom . unShowAtom
 
-deriving via ShowAtom Int       instance Portray Int
-deriving via ShowAtom Int8      instance Portray Int8
-deriving via ShowAtom Int16     instance Portray Int16
-deriving via ShowAtom Int32     instance Portray Int32
-deriving via ShowAtom Int64     instance Portray Int64
-deriving via ShowAtom Integer   instance Portray Integer
-
-deriving via ShowAtom Word      instance Portray Word
-deriving via ShowAtom Word8     instance Portray Word8
-deriving via ShowAtom Word16    instance Portray Word16
-deriving via ShowAtom Word32    instance Portray Word32
-deriving via ShowAtom Word64    instance Portray Word64
-deriving via ShowAtom Natural   instance Portray Natural
-
-deriving via ShowAtom Float     instance Portray Float
-deriving via ShowAtom Double    instance Portray Double
-deriving via ShowAtom Char      instance Portray Char
-deriving via ShowAtom Text      instance Portray Text
-deriving via ShowAtom Bool      instance Portray Bool
-deriving via ShowAtom ()        instance Portray ()
+instance Portray () where portray () = Tuple []
+instance Portray Char where portray = LitChar
+instance Portray Text where portray = LitStr
 
 instance Portray a => Portray (Ratio a) where
-  portray x = Binop "%" (infixl_ 7)
+  portray x = Binop (Ident OpIdent "%") (infixl_ 7)
     (portray $ numerator x)
     (portray $ denominator x)
 
@@ -516,19 +588,21 @@ deriving via Wrapped Generic (a, b, c)
 deriving via Wrapped Generic (a, b, c, d)
   instance (Portray a, Portray b, Portray c, Portray d) => Portray (a, b, c, d)
 deriving via Wrapped Generic (a, b, c, d, e)
-  instance (Portray a, Portray b, Portray c, Portray d, Portray e) => Portray (a, b, c, d, e)
+  instance (Portray a, Portray b, Portray c, Portray d, Portray e)
+        => Portray (a, b, c, d, e)
 deriving via Wrapped Generic (Maybe a)
   instance Portray a => Portray (Maybe a)
 deriving via Wrapped Generic (Either a b)
   instance (Portray a, Portray b) => Portray (Either a b)
 deriving via Wrapped Generic Void instance Portray Void
+deriving via Wrapped Generic Bool instance Portray Bool
 
 -- Aesthetic choice: I'd rather pretend Identity and Const are not records, so
 -- don't derive them via Generic.
 instance Portray a => Portray (Identity a) where
-  portray (Identity x) = Apply "Identity" [portray x]
+  portray (Identity x) = Apply (Name $ Ident ConIdent "Identity") [portray x]
 instance Portray a => Portray (Const a b) where
-  portray (Const x) = Apply "Const" [portray x]
+  portray (Const x) = Apply (Name $ Ident ConIdent "Const") [portray x]
 
 instance Portray a => Portray [a] where
   portray = List . map portray
@@ -537,7 +611,13 @@ deriving via Wrapped Generic (Proxy a) instance Portray (Proxy a)
 
 
 instance Portray TyCon where
-  portray = strAtom . formatPrefixCon . tyConName
+  portray tc = case nm of
+    -- For now, don't try to parse DataKinds embedded in fake constructor
+    -- names; just stick them in Opaque.
+    (c:_) | isDigit c || c `elem` ['\'', '"'] -> Opaque (T.pack nm)
+    _ -> prefixCon nm
+   where
+    nm = tyConName tc
 
 portraySomeType :: SomeTypeRep -> Portrayal
 portraySomeType (SomeTypeRep ty) = portrayType ty
@@ -548,28 +628,30 @@ portraySomeType (SomeTypeRep ty) = portrayType ty
 -- syntax that would construct the `TypeRep`.
 portrayType :: TypeRep a -> Portrayal
 portrayType = \case
-  special
-    | SomeTypeRep special == SomeTypeRep (typeRep @Type) -> "Type"
-  Fun a b -> Binop (T.pack "->") (infixr_ (-1)) (portrayType a) (portrayType b)
+  special | SomeTypeRep special == SomeTypeRep (typeRep @Type) ->
+    Name $ Ident ConIdent "Type"
+  Fun a b ->
+    Binop (Ident OpIdent "->") (infixr_ (-1)) (portrayType a) (portrayType b)
   -- TODO(awpr); it'd be nice to coalesce the resulting nested 'Apply's.
   App f x -> Apply (portrayType f) [portrayType x]
   Con' con tys -> foldl (\x -> TyApp x . portraySomeType) (portray con) tys
 
 instance Portray (TypeRep a) where
-  portray = TyApp "typeRep" . portrayType
+  portray = TyApp (Name $ Ident VarIdent "typeRep") . portrayType
 
 instance Portray SomeTypeRep where
   portray (SomeTypeRep ty) = Apply
-    (TyApp "SomeTypeRep" (portrayType ty))
-    ["typeRep"]
+    (TyApp (Name $ Ident ConIdent "SomeTypeRep") (portrayType ty))
+    [Name $ Ident VarIdent "typeRep"]
 
-instance Portray (a :~: b) where portray Refl = "Refl"
-instance Portray (Coercion a b) where portray Coercion = "Coercion"
+instance Portray (a :~: b) where portray Refl = Name $ Ident ConIdent "Refl"
+instance Portray (Coercion a b) where
+  portray Coercion = Name $ Ident ConIdent "Coercion"
 
 -- | Portray a list-like type as "fromList [...]".
-instance (IsList a, Portray (Exts.Item a))
-      => Portray (Wrapped IsList a) where
-  portray = Apply "fromList" . pure . portray . Exts.toList
+instance (IsList a, Portray (Exts.Item a)) => Portray (Wrapped IsList a) where
+  portray =
+    Apply (Name $ Ident VarIdent "fromList") . pure . portray . Exts.toList
 
 deriving via Wrapped IsList (IntMap a)
   instance Portray a => Portray (IntMap a)
@@ -588,7 +670,7 @@ deriving via Wrapped IsList (NonEmpty a)
 -- | Construct a 'Portrayal' of a 'CallStack' without the "callStack" prefix.
 portrayCallStack :: [(String, SrcLoc)] -> Portrayal
 portrayCallStack xs = Unlines
-  [ "GHC.Stack.CallStack:"
+  [ Opaque "GHC.Stack.CallStack:"
   , Nest 2 $ Unlines
       [ strAtom (func ++ ", called at " ++ prettySrcLoc loc)
       | (func, loc) <- xs
@@ -597,7 +679,7 @@ portrayCallStack xs = Unlines
 
 instance Portray CallStack where
   portray cs = case getCallStack cs of
-    [] -> "emptyCallStack"
+    [] -> Name $ Ident VarIdent "emptyCallStack"
     xs -> strQuot "callStack" $ portrayCallStack xs
 
 -- | Fold a @Fix f@ to @a@ given a function to collapse each layer.

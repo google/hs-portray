@@ -63,77 +63,121 @@ data InfixCon = Int `InfixCon` Bool
 main :: IO ()
 main = defaultMain
   [ testGroup "atoms"
-      [ testCase "portray @Int" $ portray @Int 0 @?= "0"
-      , testCase "portray @Bool" $ portray True @?= "True"
-      , testCase "portray @Float" $ portray @Float 0.0 @?= "0.0"
-      , testCase "portray @Char" $ portray 'a' @?= "'a'"
-      , testCase "portray @Text" $ portray @Text "aoeu" @?= "\"aoeu\""
-      , testCase "portray @()" $ portray () @?= "()"
+      [ testCase "portray @Int" $ portray @Int 0 @?= LitInt 0
+      , testCase "portray @Bool" $ portray True @?= Name (Ident ConIdent "True")
+      , testCase "portray @Float" $ portray @Float 0.0 @?= LitRat 0
+      , testCase "portray @Char" $ portray 'a' @?= LitChar 'a'
+      , testCase "portray @Text" $ portray @Text "aoeu" @?= LitStr "aoeu"
+      , testCase "portray @()" $ portray () @?= Tuple []
       ]
 
   , testGroup "Maybe"
-      [ testCase "portray Nothing" $ portray (Nothing @Int) @?= "Nothing"
-      , testCase "portray Just" $ portray (Just ()) @?= Apply "Just" ["()"]
+      [ testCase "portray Nothing" $
+          portray (Nothing @Int) @?= Name (Ident ConIdent "Nothing")
+      , testCase "portray Just" $
+          portray (Just ()) @?= Apply (Name (Ident ConIdent "Just")) [Tuple []]
       ]
 
   , testCase "portray Void" $ const () (\x -> portray @Void x) @?= ()
 
   , testGroup "tuples"
-      [ testCase "portray (,)" $ portray ('a', 'b') @?= Tuple ["'a'", "'b'"]
+      [ testCase "portray (,)" $
+          portray ('a', 'b') @?= Tuple [LitChar 'a', LitChar 'b']
       , testCase "portray (,,)" $
-          portray ('a', 'b', 'c') @?= Tuple ["'a'", "'b'", "'c'"]
+          portray ('a', 'b', 'c') @?=
+            Tuple [LitChar 'a', LitChar 'b', LitChar 'c']
       ]
 
   , testGroup "reflection"
       [ testCase "portray Int" $
-          portray (typeRep @Int) @?= TyApp "typeRep" "Int"
+          portray (typeRep @Int) @?=
+            TyApp
+              (Name (Ident VarIdent "typeRep"))
+              (Name (Ident ConIdent "Int"))
       , testCase "portray ->" $
           portray (typeRep @(Int -> Int)) @?=
-            TyApp "typeRep" (Binop "->" (infixr_ (-1)) "Int" "Int")
+            TyApp
+              (Name (Ident VarIdent "typeRep"))
+              (Binop
+                (Ident OpIdent "->")
+                (infixr_ (-1))
+                (Name (Ident ConIdent "Int"))
+                (Name (Ident ConIdent "Int")))
       , testCase "portray Either" $
           portray (typeRep @(Either Bool Int)) @?=
-            TyApp "typeRep" (Apply (Apply "Either" ["Bool"]) ["Int"])
+            TyApp
+              (Name (Ident VarIdent "typeRep"))
+              (Apply
+                (Apply
+                  (Name (Ident ConIdent "Either"))
+                  [Name (Ident ConIdent "Bool")])
+                [Name (Ident ConIdent "Int")])
       , testCase "portray DataKinds" $
-          portray (typeRep @'True) @?= TyApp "typeRep" "'True"
+          portray (typeRep @'True) @?=
+            TyApp
+              (Name (Ident VarIdent "typeRep"))
+              (Opaque "'True")
       , testCase "portray TypeNats" $
-          portray (typeRep @4) @?= TyApp "typeRep" "4"
+          portray (typeRep @4) @?=
+            TyApp (Name (Ident VarIdent "typeRep")) (Opaque "4")
       , testCase "portray Symbol" $
-          portray (typeRep @"hi") @?= TyApp "typeRep" "\"hi\""
+          portray (typeRep @"hi") @?=
+            TyApp (Name (Ident VarIdent "typeRep")) (Opaque "\"hi\"")
       ]
 
   , testGroup "lists"
       [ testCase "portray []" $ portray @[()] [] @?= List []
-      , testCase "portray [True]" $ portray [True] @?= List ["True"]
+      , testCase "portray [True]" $
+          portray [True] @?= List [Name (Ident ConIdent "True")]
       ]
 
   , testGroup "IsList"
       [ testCase "portray NonEmpty" $
           portray (True :| [False]) @?=
-            Apply "fromList" [List ["True", "False"]]
+            Apply (Name (Ident VarIdent "fromList"))
+            [List
+               [ Name (Ident ConIdent "True")
+               , Name (Ident ConIdent "False")
+               ]]
       ]
 
   , testGroup "Generic"
       [ testCase "portray NormalCon" $
-          portray (NormalCon 2 True) @?= Apply "NormalCon" ["2", "True"]
+          portray (NormalCon 2 True) @?=
+            Apply
+              (Name (Ident ConIdent "NormalCon"))
+              [LitInt 2, Name (Ident ConIdent "True")]
       , testCase "portray InfixOperatorCon" $
-          portray (2 :? True) @?= Binop ":?" (infixl_ 5) "2" "True"
+          portray (2 :? True) @?=
+            Binop
+              (Ident OpConIdent ":?")
+              (infixl_ 5)
+              (LitInt 2)
+              (Name (Ident ConIdent "True"))
       , testCase "portray PrefixOperatorCon" $
-          portray (2 :?? True) @?= Apply "(:??)" ["2", "True"]
+          portray (2 :?? True) @?=
+            Apply
+              (Name (Ident OpConIdent ":??"))
+              [LitInt 2, Name (Ident ConIdent "True")]
       , testCase "portray RecordCon" $
           portray (RecordCon 2 True) @?=
-            Record "RecordCon"
-              [ FactorPortrayal "_rcInt" "2"
-              , FactorPortrayal "_rcBool" "True"
+            Record (Name (Ident ConIdent "RecordCon"))
+              [ FactorPortrayal "_rcInt" (LitInt 2)
+              , FactorPortrayal "_rcBool" (Name (Ident ConIdent "True"))
               ]
       , testCase "portray OperatorRecordCon" $
           portray (2 :??? True) @?=
-            Record "(:???)"
-              [ FactorPortrayal "_orcInt" "2"
-              , FactorPortrayal "_orcBool" "True"
+            Record (Name (Ident OpConIdent ":???"))
+              [ FactorPortrayal "_orcInt" (LitInt 2)
+              , FactorPortrayal "_orcBool" (Name (Ident ConIdent "True"))
               ]
       , testCase "portray InfixCon" $
           portray (InfixCon 2 True) @?=
-            Binop "`InfixCon`" (infixl_ 9) "2" "True"
+            Binop
+              (Ident ConIdent "InfixCon")
+              (infixl_ 9)
+              (LitInt 2)
+              (Name (Ident ConIdent "True"))
       -- Covered basic sum types and nullary constructors with Maybe and Void.
       ]
   ]
