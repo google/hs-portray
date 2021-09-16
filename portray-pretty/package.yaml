@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: portray-pretty
-version: 0.1.1
+version: 0.1.0.2
 category: Text
 synopsis: A portray backend using the pretty package.
 description: |

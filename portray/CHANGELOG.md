@@ -5,3 +5,4 @@ Initial version.
 # 0.2.0
 
 * Split Atom into literals, identifiers, and opaque text.
+* Make operator names and record field names `Ident`s.

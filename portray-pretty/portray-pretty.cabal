@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2eb445ef96b9ad4416298e5ce90748be086f357723e549031c83b30963f87445
+-- hash: 2f09ba9b37e58400c49ded58a06b338f5b6aab89cb1b20f9b4461e347d4a9a00
 
 name:           portray-pretty
-version:        0.1.1
+version:        0.1.0.2
 synopsis:       A portray backend using the pretty package.
 description:    This provides a <https://hackage.haskell.org/package/pretty pretty> backend
                 for <https://hackage.haskell.org/package/portray portray>, along with

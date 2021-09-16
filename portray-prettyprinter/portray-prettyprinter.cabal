@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 77e6763d8e68395bf3fbbe7c15dd621b54275abf63a70f721affb1213c6e9b8a
+-- hash: e6aa6f9e587b2a639ffc075ae65a38416ecea3731922a770ff281e69133344e2
 
 name:           portray-prettyprinter
 version:        0.1.1
@@ -14,7 +14,7 @@ description:    This provides a
                 <https://hackage.haskell.org/package/portray portray> along with derivable
                 'Pretty' instances for types with 'Portray' instances.
                 .
-                This started out as a copy of
+                This started out as a fork of
                 <https://hackage.haskell.org/package/portray-pretty portray-pretty>, and is
                 still very similar.  However, @prettyprinter@ gives more flexibility to
                 documents at the cost of requiring more behavior to be specified explicitly.
@@ -22,6 +22,10 @@ description:    This provides a
                 of the initial release, this backend is less mature and hasn't been used in
                 practice, so there are likely more formatting bugs.  Please do file bugs on
                 the GitHub issue tracker if you find anything that seems obviously wrong!
+                .
+                This variant provides automatic syntax highlighting on output of 'pp' and
+                'ppd' by default.  Try using 'pp' as the print function in GHCi:
+                @:set -interactive-print=Data.Portray.Prettyprinter.pp@!
 category:       Text
 homepage:       https://github.com/google/hs-portray#readme
 bug-reports:    https://github.com/google/hs-portray/issues

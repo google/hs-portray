@@ -37,6 +37,11 @@
 -- example = 'showPortrayal' (MyRecord 2 ...)
 -- @
 --
+-- This usage provides colorized pretty-printing by default with 'pp'.  Note if
+-- you don't like the default choice of colors or don't want colors at all, you
+-- can roll your own 'pp' function with 'portray', 'portrayalToDoc' and your
+-- @prettyprinter@ rendering backend of choice.
+--
 -- The second usage is to use @portray@'s generic deriving to provide derived
 -- 'Pretty' instances, in a codebase that uses 'Pretty' as the preferred
 -- typeclass for pretty-printable values.  With this usage, things you want to
@@ -69,6 +74,10 @@
 --   deriving Portray via Wrapped Generic MyRecord
 -- @
 --
+-- Since the 'Pretty' class requires a universally-quantified annotation type,
+-- its instances cannot provide any annotations.  As such, this usage cannot
+-- provide automatic colorization.
+--
 -- This module also exports the underlying rendering functionality in a variety
 -- of forms for more esoteric uses.
 
@@ -85,14 +94,16 @@ module Data.Portray.Prettyprinter
          , showDiff, ppd
            -- * DerivingVia wrapper
          , WrappedPortray(..)
-           -- * Rendering Functions
+           -- * Rendering
+           -- ** Colorization
+         , defaultStyling, SyntaxClass(..)
            -- ** With Associativity
          , DocAssocPrec, toDocAssocPrecF, toDocAssocPrec
            -- ** With Precedence
          , portrayalToDocPrecF, portrayalToDocPrec
            -- ** Convenience Functions
          , portrayalToDoc
-         , prettyShowPortrayal
+         , prettyShowPortrayal, colorShowPortrayal
          ) where
 
 import Data.Functor ((<&>))
