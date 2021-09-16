@@ -249,7 +249,10 @@ ppBulletList o s c = \case
   []         -> opener <> closer
   (doc:docs) ->
     P.group $
-      P.concatWith (\x y -> x <> P.group (P.line' <> y))
+      foldl01
+        (\x y -> x <> P.group (P.line' <> y))
+        id
+        mempty
         (opener <> P.flatAlt " " "" <> doc :
           zipWith (P.<+>) (repeat separator) docs) <>
       P.line' <> closer

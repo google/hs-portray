@@ -6,3 +6,4 @@ Initial version.
 
 * Update to portray-0.2.0
 * Add colorized pretty-printing for `pp` and `ppd`
+* Fix records/lists/tuples putting initial elements on their own lines
