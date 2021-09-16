@@ -184,6 +184,17 @@ main = defaultMain
           \  { l = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n\
           \  , r = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n\
           \  }"
+      , testCase "break-equals" $
+          prettyShowPortrayal
+              (Record (Name "These")
+                [ FactorPortrayal
+                    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    (Name "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+                ]) @?=
+            "These\n\
+            \  { aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa =\n\
+            \      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\
+            \  }"
       ]
 
   , testGroup "TyApp"
