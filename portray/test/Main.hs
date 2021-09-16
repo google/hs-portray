@@ -22,6 +22,7 @@ module Main where
 
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Text (Text)
+import qualified Data.Text as T (pack)
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Type.Reflection (typeRep)
@@ -59,6 +60,9 @@ data OperatorRecordCon = (:???) { _orcInt :: Int, _orcBool :: Bool }
 data InfixCon = Int `InfixCon` Bool
   deriving Generic
   deriving Portray via Wrapped Generic InfixCon
+
+sel :: String -> Ident
+sel = Ident VarIdent . T.pack
 
 main :: IO ()
 main = defaultMain
@@ -162,14 +166,14 @@ main = defaultMain
       , testCase "portray RecordCon" $
           portray (RecordCon 2 True) @?=
             Record (Name (Ident ConIdent "RecordCon"))
-              [ FactorPortrayal "_rcInt" (LitInt 2)
-              , FactorPortrayal "_rcBool" (Name (Ident ConIdent "True"))
+              [ FactorPortrayal (sel "_rcInt") (LitInt 2)
+              , FactorPortrayal (sel "_rcBool") (Name (Ident ConIdent "True"))
               ]
       , testCase "portray OperatorRecordCon" $
           portray (2 :??? True) @?=
             Record (Name (Ident OpConIdent ":???"))
-              [ FactorPortrayal "_orcInt" (LitInt 2)
-              , FactorPortrayal "_orcBool" (Name (Ident ConIdent "True"))
+              [ FactorPortrayal (sel "_orcInt") (LitInt 2)
+              , FactorPortrayal (sel "_orcBool") (Name (Ident ConIdent "True"))
               ]
       , testCase "portray InfixCon" $
           portray (InfixCon 2 True) @?=

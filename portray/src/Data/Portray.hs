@@ -62,10 +62,10 @@ module Data.Portray
          , showAtom, strAtom, strQuot, strBinop
            -- * Miscellaneous
          , Fix(..), cata, portrayCallStack, portrayType
-         , conIdent, prefixCon
+         , conIdent, selIdent, prefixCon
          ) where
 
-import Data.Char (isDigit)
+import Data.Char (isAlpha, isDigit, isUpper)
 import Data.Coerce (Coercible, coerce)
 import Data.Functor.Identity (Identity(..))
 import Data.Functor.Const (Const(..))
@@ -78,6 +78,7 @@ import Data.Proxy (Proxy)
 import Data.Ratio (Ratio, numerator, denominator)
 import Data.Sequence (Seq)
 import Data.Set (Set)
+import Data.String (IsString)
 import Data.Text (Text)
 import Data.Type.Coercion (Coercion(..))
 import Data.Type.Equality ((:~:)(..))
@@ -138,6 +139,18 @@ data Ident = Ident !IdentKind !Text
   deriving (Eq, Ord, Read, Show, Generic)
   deriving Portray via Wrapped Generic Ident
 
+instance IsString Ident where
+  fromString nm = Ident k (T.pack nm)
+   where
+    k = case nm of
+      (':':_) -> OpConIdent
+      ('_':_) -> VarIdent
+      (c:_)
+        | isUpper c -> ConIdent
+        | isAlpha c -> VarIdent
+        | otherwise -> OpIdent
+      "" -> VarIdent -- *shrug*
+
 -- | A single level of pseudo-Haskell expression; used to define 'Portrayal'.
 data PortrayalF a
   = NameF {-# UNPACK #-} !Ident
@@ -179,7 +192,7 @@ data PortrayalF a
 
 -- | A 'Portrayal' along with a field name; one piece of a record literal.
 data FactorPortrayal a = FactorPortrayal
-  { _fpFieldName :: !Text
+  { _fpFieldName :: !Ident
   , _fpPortrayal :: !a
   }
   deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Generic)
@@ -448,9 +461,17 @@ class GPortrayProduct f where
 instance GPortrayProduct U1 where
   gportrayProduct U1 = id
 
+-- | Turn a field selector name into an 'Ident'.
+selIdent :: String -> Ident
+selIdent nm = Ident k (T.pack nm)
+ where
+  k = case nm of
+    (c:_) | isAlpha c || c == '_' -> VarIdent
+    _                             -> OpIdent
+
 instance (Selector s, Portray a) => GPortrayProduct (S1 s (K1 i a)) where
   gportrayProduct (M1 (K1 x)) =
-    (FactorPortrayal (T.pack $ selName @s undefined) (portray x) :)
+    (FactorPortrayal (selIdent $ selName @s undefined) (portray x) :)
 
 instance (GPortrayProduct f, GPortrayProduct g)
       => GPortrayProduct (f :*: g) where

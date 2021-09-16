@@ -100,6 +100,7 @@ import Data.Text (Text)
 import qualified Data.Text.IO as T (putStrLn)
 
 import Prettyprinter (Doc, Pretty(..))
+import qualified Prettyprinter.Render.Terminal as A -- for ANSI
 import qualified Prettyprinter as P
 import qualified Prettyprinter.Render.Text as R
 
@@ -112,16 +113,22 @@ import Data.Portray
 import Data.Portray.Diff (Diff(..))
 
 -- | Pretty-print a value to stdout using its 'Portray' instance.
+--
+-- This uses ANSI color codes, so take care not to use it in contexts where it
+-- might output to something other than a terminal.
 pp :: Portray a => a -> IO ()
-pp = T.putStrLn . showPortrayal
+pp = T.putStrLn . colorShowPortrayal . portray
 
 -- | Pretty-print a value using its 'Portray' instance.
 showPortrayal :: Portray a => a -> Text
 showPortrayal = prettyShowPortrayal . portray
 
 -- | Pretty-print a diff between two values to stdout using a 'Diff' instance.
+--
+-- This uses ANSI color codes, so take care not to use it in contexts where it
+-- might output to something other than a terminal.
 ppd :: Diff a => a -> a -> IO ()
-ppd x = T.putStrLn . showDiff x
+ppd x = T.putStrLn . maybe "_" colorShowPortrayal . diff x
 
 -- | Pretty-print a diff between two values using a 'Diff' instance.
 showDiff :: Diff a => a -> a -> Text
@@ -141,13 +148,39 @@ matchCtx ctx assoc
   | ctx == assoc = ctx
   | otherwise = AssocNope
 
+data LitKind = IntLit | RatLit | CharLit | StrLit
+
+data SyntaxClass
+  = Identifier IdentKind
+  | Literal LitKind
+  | Keyword
+  | Structural -- ^ Parens, brackets, and other fixed syntactic symbols.
+
+-- | A fairly arbitrary colorization style based on what looked good to me.
+defaultStyling :: SyntaxClass -> A.AnsiStyle
+defaultStyling = \case
+  Identifier k -> case k of
+    OpConIdent -> A.color A.Magenta
+    OpIdent -> A.colorDull A.Yellow
+    ConIdent -> A.color A.Magenta
+    VarIdent -> mempty
+  Literal k -> case k of
+    StrLit -> A.colorDull A.Blue
+    _      -> A.colorDull A.Blue
+  Keyword -> A.colorDull A.Green
+  Structural -> A.colorDull A.Green
+
 -- | Convert a 'Portrayal' to a 'Doc'.
-portrayalToDoc :: Portrayal -> Doc ann
+portrayalToDoc :: Portrayal -> Doc SyntaxClass
 portrayalToDoc t = portrayalToDocPrec t (-1)
 
+parens :: Doc SyntaxClass -> Doc SyntaxClass
+parens d =
+  P.annotate Structural (char '(') <> d <> P.annotate Structural (char ')')
+
 -- Conditionally wrap a document in parentheses.
-maybeParens :: Bool -> Doc ann -> Doc ann
-maybeParens = \case True -> P.parens; False -> id
+maybeParens :: Bool -> Doc SyntaxClass -> Doc SyntaxClass
+maybeParens = \case True -> parens; False -> id
 
 -- Convert Text to a document; 'pretty' specialized to 'Text'.
 text :: Text -> Doc ann
@@ -157,30 +190,33 @@ text = pretty
 char :: Char -> Doc ann
 char = pretty
 
-ppInfix :: Ident -> Doc ann
+ppInfix :: Ident -> Doc SyntaxClass
 ppInfix (Ident k nm) = case k of
   OpConIdent -> nmDoc
   OpIdent -> nmDoc
   VarIdent -> wrappedNm
   ConIdent -> wrappedNm
  where
-  nmDoc = text nm
-  wrappedNm = char '`' <> nmDoc <> char '`'
+  backquote = P.annotate Structural (char '`')
+  nmDoc = P.annotate (Identifier k) (text nm)
+  wrappedNm = backquote <> nmDoc <> backquote
 
-ppPrefix :: Ident -> Doc ann
+ppPrefix :: Ident -> Doc SyntaxClass
 ppPrefix (Ident k nm) = case k of
   OpConIdent -> wrappedNm
   OpIdent -> wrappedNm
   VarIdent -> nmDoc
   ConIdent -> nmDoc
  where
-  nmDoc = text nm
-  wrappedNm = P.parens nmDoc
+  nmDoc = P.annotate (Identifier k) (text nm)
+  wrappedNm = parens nmDoc
 
 ppBinop
   :: Ident
   -> Infixity
-  -> DocAssocPrec ann -> DocAssocPrec ann -> DocAssocPrec ann
+  -> DocAssocPrec SyntaxClass
+  -> DocAssocPrec SyntaxClass
+  -> DocAssocPrec SyntaxClass
 ppBinop nm fx@(Infixity assoc opPrec) x y lr p =
   maybeParens (not $ fixityCompatible fx lr p) $ P.nest 2 $ P.sep
     [ x (matchCtx AssocL assoc) opPrec P.<+> ppInfix nm
@@ -188,27 +224,40 @@ ppBinop nm fx@(Infixity assoc opPrec) x y lr p =
     ]
 
 ppBulletList
-  :: Doc ann -- ^ Open brace,  e.g. {  [  {  (
-  -> Doc ann -- ^ Separator,   e.g. ;  ,  ,  ,
-  -> Doc ann -- ^ Close brace, e.g. }  ]  }  )
-  -> [Doc ann]
-  -> Doc ann
-ppBulletList opener _         closer []         = opener <> closer
-ppBulletList opener separator closer (doc:docs) =
-  P.group $
-    P.concatWith (\x y -> x <> P.group (P.line' <> y))
-      (opener <> P.flatAlt " " "" <> doc :
-        zipWith (P.<+>) (repeat separator) docs) <>
-    P.line' <> closer
+  :: Doc SyntaxClass -- ^ Open brace,  e.g. {  [  {  (
+  -> Doc SyntaxClass -- ^ Separator,   e.g. ;  ,  ,  ,
+  -> Doc SyntaxClass -- ^ Close brace, e.g. }  ]  }  )
+  -> [Doc SyntaxClass]
+  -> Doc SyntaxClass
+ppBulletList o s c = \case
+  []         -> opener <> closer
+  (doc:docs) ->
+    P.group $
+      P.concatWith (\x y -> x <> P.group (P.line' <> y))
+        (opener <> P.flatAlt " " "" <> doc :
+          zipWith (P.<+>) (repeat separator) docs) <>
+      P.line' <> closer
+ where
+  f = P.annotate Structural
+  opener = f o
+  separator = f s
+  closer = f c
 
 -- | Render one layer of 'PortrayalF' to 'DocAssocPrec'.
-toDocAssocPrecF :: PortrayalF (DocAssocPrec ann) -> DocAssocPrec ann
+toDocAssocPrecF
+  :: PortrayalF (DocAssocPrec SyntaxClass)
+  -> DocAssocPrec SyntaxClass
 toDocAssocPrecF = \case
   NameF nm -> \_ _ -> ppPrefix nm
-  LitIntF x -> \_ _ -> pretty x
-  LitRatF x -> \_ _ -> pretty (fromRational x :: Double)
-  LitStrF x -> \_ _ -> pretty (show x)   -- Pretty String instance is unquoted
-  LitCharF x -> \_ _ -> pretty (show x)  -- Likewise Char
+  LitIntF x -> \_ _ -> P.annotate (Literal IntLit) $ pretty x
+  LitRatF x -> \_ _ ->
+    P.annotate (Literal RatLit) $ pretty (fromRational x :: Double)
+  LitStrF x -> \_ _ ->
+    -- Pretty Text instance is unquoted, so use 'show' to quote/escape.
+    P.annotate (Literal StrLit) $ pretty (show x)
+  LitCharF x -> \_ _ ->
+    -- Likewise Char
+    P.annotate (Literal CharLit) $ pretty (show x)
   OpaqueF txt -> \_ _ -> text txt
   ApplyF fn [] -> \_ _ -> fn AssocL 10
   ApplyF fn xs -> \lr p ->
@@ -223,10 +272,10 @@ toDocAssocPrecF = \case
   LambdaCaseF xs -> \_ p ->
     maybeParens (p >= 10) $
       P.nest 2 $ P.sep
-        [ "\\case"
+        [ P.annotate Structural "\\" <> P.annotate Keyword "case"
         , ppBulletList "{" ";" "}"
             [ P.nest 2 $ P.sep $
-                [ pat AssocNope 0 P.<+> "->"
+                [ pat AssocNope 0 P.<+> P.annotate Structural "->"
                 , val AssocNope 0
                 ]
             | (pat, val) <- xs
@@ -237,22 +286,30 @@ toDocAssocPrecF = \case
     _  -> P.nest 2 $ P.sep
       [ con AssocNope 10
       , ppBulletList "{" "," "}"
-          [ P.nest 2 $ P.sep
-              [ text sel P.<+> "="
+          [ P.nest 4 $ P.sep
+              [ ppPrefix sel P.<+> P.annotate Structural "="
               , val AssocNope 0
               ]
           | FactorPortrayal sel val <- sels
           ]
       ]
   TyAppF val ty -> \_ _ ->
-    P.nest 2 $ P.sep [val AssocNope 10, "@" <> ty AssocNope 10]
+    P.nest 2 $ P.sep
+      [ val AssocNope 10
+      , P.annotate Structural "@" <> ty AssocNope 10
+      ]
   TySigF val ty -> \_ p -> maybeParens (p >= 0) $
-    P.nest 2 $ P.sep [val AssocNope 0, "::" P.<+> ty AssocNope 0]
+    P.nest 2 $ P.sep
+      [ val AssocNope 0
+      , P.annotate Structural "::" P.<+> ty AssocNope 0
+      ]
   QuotF nm content -> \_ _ ->
     P.nest 2 $ P.sep
-      [ char '[' <> text nm <> char '|'
+      [ P.annotate Structural "[" <>
+          P.annotate (Identifier VarIdent) (text nm) <>
+          P.annotate Structural "|"
       , content AssocNope (-1)
-      , "|]"
+      , P.annotate Structural "|]"
       ]
   UnlinesF ls -> \_ _ -> P.vcat (ls <&> \l -> l AssocNope (-1))
   NestF n x -> \_ _ -> P.nest n (x AssocNope (-1))
@@ -262,21 +319,28 @@ toDocPrec dap = dap AssocNope . subtract 1
 
 -- | Render a 'PortrayalF' to a 'Doc'.
 portrayalToDocPrecF
-  :: PortrayalF (DocAssocPrec ann) -> Rational -> Doc ann
+  :: PortrayalF (DocAssocPrec SyntaxClass) -> Rational -> Doc SyntaxClass
 portrayalToDocPrecF = toDocPrec . toDocAssocPrecF
 
 -- | Render a 'Portrayal' to a 'Doc' with support for operator associativity.
-toDocAssocPrec :: Portrayal -> DocAssocPrec ann
+toDocAssocPrec :: Portrayal -> DocAssocPrec SyntaxClass
 toDocAssocPrec = cata toDocAssocPrecF . unPortrayal
 
 -- | Render a 'Portrayal' to a 'Doc' with only operator precedence.
-portrayalToDocPrec :: Portrayal -> Rational -> Doc ann
+portrayalToDocPrec :: Portrayal -> Rational -> Doc SyntaxClass
 portrayalToDocPrec = toDocPrec . toDocAssocPrec
 
--- | Convenience function for rendering a 'Portrayal' to a 'String'.
+-- | Convenience function for rendering a 'Portrayal' to a 'Text'.
 prettyShowPortrayal :: Portrayal -> Text
 prettyShowPortrayal p =
   R.renderStrict $ P.layoutPretty P.defaultLayoutOptions $
+  toDocAssocPrec p AssocNope (-1)
+
+-- | Convenience function for rendering a 'Portrayal' to colorized 'Text'.
+colorShowPortrayal :: Portrayal -> Text
+colorShowPortrayal p =
+  A.renderStrict $ fmap defaultStyling $
+  P.layoutPretty P.defaultLayoutOptions $
   toDocAssocPrec p AssocNope (-1)
 
 -- | A newtype providing a 'Pretty' instance via 'Portray', for @DerivingVia@.
@@ -289,4 +353,4 @@ newtype WrappedPortray a = WrappedPortray { unWrappedPortray :: a }
 
 -- | Provide an instance for 'Pretty' by way of 'Portray'.
 instance Portray a => Pretty (WrappedPortray a) where
-  pretty x = portrayalToDocPrec (portray $ unWrappedPortray x) 0
+  pretty x = P.unAnnotate $ portrayalToDocPrec (portray $ unWrappedPortray x) 0

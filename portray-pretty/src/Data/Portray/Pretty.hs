@@ -226,7 +226,7 @@ toDocAssocPrecF = \case
       [ con AssocNope 10
       , P.nest 2 $ ppBulletList "{" "," "}"
           [ P.sep
-              [ P.text (T.unpack sel) P.<+> "="
+              [ ppPrefix sel P.<+> "="
               , P.nest 2 $ val AssocNope 0
               ]
           | FactorPortrayal sel val <- sels

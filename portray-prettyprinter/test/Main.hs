@@ -20,26 +20,12 @@
 
 module Main where
 
-import Data.Text (Text)
-
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit ((@?=))
 
 import Data.Portray
 import Data.Portray.Prettyprinter
-
-var :: Text -> Portrayal
-var nm = Name (Ident VarIdent nm)
-
-con :: Text -> Portrayal
-con nm = Name (Ident ConIdent nm)
-
-op :: Text -> Ident
-op nm = Ident OpIdent nm
-
-opCon :: Text -> Ident
-opCon nm = Ident OpConIdent nm
 
 main :: IO ()
 main = defaultMain
@@ -50,29 +36,30 @@ main = defaultMain
 
   , testGroup "Apply"
       [ testCase "nullary" $
-          prettyShowPortrayal (Apply (con "Nothing") []) @?= "Nothing"
+          prettyShowPortrayal (Apply (Name "Nothing") []) @?= "Nothing"
       , testCase "nullary 2" $
-          prettyShowPortrayal (Apply (var "id") [Apply (con "Nothing") []]) @?=
+          prettyShowPortrayal
+              (Apply (Name "id") [Apply (Name "Nothing") []]) @?=
             "id Nothing"
       , testCase "unary" $
-          prettyShowPortrayal (Apply (con "Just") [LitInt 2]) @?= "Just 2"
+          prettyShowPortrayal (Apply (Name "Just") [LitInt 2]) @?= "Just 2"
       , testCase "parens" $
           prettyShowPortrayal
-              (Apply (con "Just") [Apply (con "Just") [LitInt 2]]) @?=
+              (Apply (Name "Just") [Apply (Name "Just") [LitInt 2]]) @?=
             "Just (Just 2)"
       , testCase "binary" $
-          prettyShowPortrayal (Apply (con "These") [LitInt 2, LitInt 4]) @?=
+          prettyShowPortrayal (Apply (Name "These") [LitInt 2, LitInt 4]) @?=
             "These 2 4"
       , testCase "nested" $
           prettyShowPortrayal
-              (Apply (Apply (con "These") [LitInt 2]) [LitInt 4]) @?=
+              (Apply (Apply (Name "These") [LitInt 2]) [LitInt 4]) @?=
             "These 2 4"
       ]
 
   , testGroup "Binop"
       [ testCase "operator" $
           prettyShowPortrayal
-              (Binop (opCon ":|") (infixr_ 5) (LitInt 5) (List [])) @?=
+              (Binop ":|" (infixr_ 5) (LitInt 5) (List [])) @?=
             "5 :| []"
 
       , testCase "con" $
@@ -81,43 +68,43 @@ main = defaultMain
                 (Ident ConIdent "InfixCon")
                 (infixl_ 9)
                 (LitInt 2)
-                (con "True")) @?=
+                (Name "True")) @?=
             "2 `InfixCon` True"
 
       , testCase "nest prec" $
           prettyShowPortrayal
               (Binop
-                (op "+")
+                "+"
                 (infixl_ 6)
-                (Binop (op "*") (infixl_ 7) (LitInt 2) (LitInt 4))
+                (Binop "*" (infixl_ 7) (LitInt 2) (LitInt 4))
                 (LitInt 6)) @?=
             "2 * 4 + 6"
 
       , testCase "nest anti-prec" $
           prettyShowPortrayal
               (Binop
-                (op "*")
+                "*"
                 (infixl_ 7)
-                (Binop (op "+") (infixl_ 6) (LitInt 2) (LitInt 4))
+                (Binop "+" (infixl_ 6) (LitInt 2) (LitInt 4))
                 (LitInt 6)) @?=
             "(2 + 4) * 6"
 
       , testCase "nest assoc" $
           prettyShowPortrayal
               (Binop
-                (op "+")
+                "+"
                 (infixl_ 6)
-                (Binop (op "+") (infixl_ 6) (LitInt 2) (LitInt 4))
+                (Binop "+" (infixl_ 6) (LitInt 2) (LitInt 4))
                 (LitInt 6)) @?=
             "2 + 4 + 6"
 
       , testCase "nest anti-assoc" $
           prettyShowPortrayal
               (Binop
-                (op "+")
+                "+"
                 (infixl_ 6)
                 (LitInt 2)
-                (Binop (op "+") (infixl_ 6) (LitInt 4) (LitInt 6))) @?=
+                (Binop "+" (infixl_ 6) (LitInt 4) (LitInt 6))) @?=
             "2 + (4 + 6)"
       ]
 
@@ -150,13 +137,13 @@ main = defaultMain
       , testCase "two" $
           prettyShowPortrayal
               (LambdaCase
-                [(con "True", LitInt 2), (con "False", LitInt 4)]) @?=
+                [(Name "True", LitInt 2), (Name "False", LitInt 4)]) @?=
             "\\case {True -> 2; False -> 4}"
       , testCase "line-break" $
           prettyShowPortrayal
               (LambdaCase
-                [ (con "True", strAtom (replicate 40 '2'))
-                , (con "False", strAtom (replicate 40 '4'))
+                [ (Name "True", strAtom (replicate 40 '2'))
+                , (Name "False", strAtom (replicate 40 '4'))
                 ]) @?=
             "\\case\n\
             \  { True -> 2222222222222222222222222222222222222222\n\
@@ -165,29 +152,31 @@ main = defaultMain
       , testCase "no-parens" $
           prettyShowPortrayal
               (LambdaCase
-                [( Apply (con "Just") [LitInt 2]
-                 , Apply (con "Just") [LitInt 4]
+                [( Apply (Name "Just") [LitInt 2]
+                 , Apply (Name "Just") [LitInt 4]
                  )]) @?=
             "\\case {Just 2 -> Just 4}"
       ]
 
   , testGroup "Record"
-      [ testCase "empty" $ prettyShowPortrayal (Record (con "Nothing") []) @?=
+      [ testCase "empty" $ prettyShowPortrayal (Record (Name "Nothing") []) @?=
           "Nothing"
       , testCase "singleton" $
             prettyShowPortrayal
-              (Record (con "Just") [FactorPortrayal "it" (LitInt 2)]) @?=
+              (Record
+                (Name "Just")
+                [FactorPortrayal "it" (LitInt 2)]) @?=
           "Just {it = 2}"
       , testCase "two" $
             prettyShowPortrayal
-              (Record (con "These")
+              (Record (Name "These")
                 [ FactorPortrayal "l" (LitInt 2)
                 , FactorPortrayal "r" (LitInt 4)
                 ]) @?=
           "These {l = 2, r = 4}"
       , testCase "line-break" $
             prettyShowPortrayal
-              (Record (con "These")
+              (Record (Name "These")
                 [ FactorPortrayal "l" (portray @[Int] [0..10])
                 , FactorPortrayal "r" (portray @[Int] [0..10])
                 ]) @?=
@@ -199,11 +188,11 @@ main = defaultMain
 
   , testGroup "TyApp"
       [ testCase "con" $
-          prettyShowPortrayal (TyApp (var "typeRep") (con "Int")) @?=
+          prettyShowPortrayal (TyApp (Name "typeRep") (Name "Int")) @?=
             "typeRep @Int"
       , testCase "parens" $
           prettyShowPortrayal
-              (TyApp (var "typeRep") (Apply (con "Maybe") [con "Int"])) @?=
+              (TyApp (Name "typeRep") (Apply (Name "Maybe") [Name "Int"])) @?=
             "typeRep @(Maybe Int)"
       , testCase "line-break" $
           prettyShowPortrayal
@@ -215,13 +204,13 @@ main = defaultMain
       ]
 
   , testGroup "TySig"
-      [ testCase "con" $ prettyShowPortrayal (TySig (LitInt 2) (con "Int")) @?=
+      [ testCase "con" $ prettyShowPortrayal (TySig (LitInt 2) (Name "Int")) @?=
           "2 :: Int"
       , testCase "no-parens" $
           prettyShowPortrayal
               (TySig
-                (Apply (con "Just") [LitInt 2])
-                (Apply (con "Maybe") [con "Int"])) @?=
+                (Apply (Name "Just") [LitInt 2])
+                (Apply (Name "Maybe") [Name "Int"])) @?=
             "Just 2 :: Maybe Int"
       , testCase "line-break" $
           prettyShowPortrayal
@@ -232,7 +221,7 @@ main = defaultMain
             \  :: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       , testCase "parens" $
           prettyShowPortrayal
-              (Apply (con "Just") [TySig (LitInt 2) (con "Int")]) @?=
+              (Apply (Name "Just") [TySig (LitInt 2) (Name "Int")]) @?=
             "Just (2 :: Int)"
       ]
   ]

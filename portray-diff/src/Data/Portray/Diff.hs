@@ -69,7 +69,6 @@ import Data.Ratio (Ratio)
 import Data.Semigroup (Any(..))
 import Data.Sequence (Seq)
 import Data.Text (Text)
-import qualified Data.Text as T
 import Data.Type.Equality ((:~:)(..))
 import Data.Word (Word8, Word16, Word32, Word64)
 import GHC.Exts (IsList(..), proxy#)
@@ -82,7 +81,7 @@ import Data.Portray
          ( Portray(..), Portrayal(..), PortrayalF(..), Fix(..)
          , IdentKind(..), Ident(..)
          , Infixity(..), Assoc(..), FactorPortrayal(..)
-         , showAtom, portrayType, prefixCon
+         , showAtom, portrayType, prefixCon, selIdent
          )
 import qualified Data.DList as D
 import Data.Wrapped (Wrapped(..), Wrapped1(..))
@@ -118,7 +117,7 @@ class GDiffRecord f where
 instance (Selector s, Diff a) => GDiffRecord (S1 s (K1 i a)) where
   gdiffRecord (M1 (K1 a)) (M1 (K1 b)) =
     foldMap D.singleton $  -- Maybe diff to DList of (zero or one) diffs.
-      FactorPortrayal (T.pack $ selName @s undefined) <$>
+      FactorPortrayal (selIdent $ selName @s undefined) <$>
       diff a b
 
 instance (GDiffRecord f, GDiffRecord g) => GDiffRecord (f :*: g) where
