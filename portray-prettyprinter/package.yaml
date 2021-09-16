@@ -66,4 +66,6 @@ tests:
       - portray-prettyprinter
       - test-framework
       - test-framework-hunit
+      - test-framework-quickcheck2
       - HUnit
+      - QuickCheck

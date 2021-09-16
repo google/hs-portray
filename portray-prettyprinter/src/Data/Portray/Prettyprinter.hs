@@ -108,7 +108,9 @@ module Data.Portray.Prettyprinter
 
 import Data.Functor ((<&>))
 import Data.Text (Text)
+import qualified Data.Text as T
 import qualified Data.Text.IO as T (putStrLn)
+import GHC.Show (showLitString)
 
 import Prettyprinter (Doc, Pretty(..))
 import qualified Prettyprinter.Render.Terminal as A -- for ANSI
@@ -254,6 +256,69 @@ ppBulletList o s c = \case
   separator = f s
   closer = f c
 
+foldl01 :: (b -> a -> b) -> (a -> b) -> b -> [a] -> b
+foldl01 f g z = \case
+  [] -> z
+  (x:xs) -> foldl f (g x) xs
+
+-- 'T.words' coalesces adjacent spaces, so it's not suitable for use in
+-- 'ppStrLit'; roll our own that considers adjacent spaces to have empty words
+-- between them.
+wordsSep :: Text -> [(Text, Text)]
+wordsSep "" = []
+wordsSep s =
+  let isWhitespace = (`elem` [' ', '\t'])
+      (word, rest) = T.break isWhitespace s
+      (sep, rest') = T.span isWhitespace rest
+  in  (word, sep) : wordsSep rest'
+
+-- 'T.lines' also fails to distinguish trailing newlines... ugh.
+linesSep :: Text -> [Text]
+linesSep "" = []
+linesSep s0 = go s0
+ where
+  go s =
+    let (line, rest) = T.break (== '\n') s
+    in  line : if T.null rest then [] else go (T.tail rest)
+
+ppStrLit :: Text -> Doc SyntaxClass
+ppStrLit unescaped =
+  P.annotate (Literal StrLit) $
+  P.group $ -- Prefer putting the whole thing on this line whenever possible.
+  P.enclose "\"" "\"" $
+  -- Then prefer breaking on newlines when the next line doesn't fit.
+  foldl01
+    (\x l ->
+      x <> P.group (P.flatAlt ("\\n" <> backslashBreak <> l) ("\\n" <> l)))
+    id
+    mempty
+    (ppLine <$> escapedLinesOfWords)
+ where
+  escapedLinesOfWords :: [[(Doc SyntaxClass, Doc SyntaxClass)]]
+  escapedLinesOfWords =
+    map
+        (\ (w, ws) ->
+          (pretty $ showLitString (T.unpack w) "", ppWhitespace ws)) .
+      wordsSep <$>
+    linesSep unescaped
+
+  ppWhitespace :: Text -> Doc SyntaxClass
+  ppWhitespace = text . T.concatMap (\case '\t' -> "\\t"; c -> T.pack [c])
+
+  ppLine :: [(Doc SyntaxClass, Doc SyntaxClass)] -> Doc SyntaxClass
+  ppLine ws =
+    -- Finally, break at word boundaries if the next word doesn't fit.
+    P.group $ uncurry (<>) $ foldl01
+      (\(line, space) (w, space') ->
+        ( line <> P.group (P.flatAlt (space <> backslashBreak) space <> w)
+        , space'
+        ))
+      id
+      mempty
+      ws
+
+  backslashBreak = "\\" <> P.line' <> "\\"
+
 -- | Render one layer of 'PortrayalF' to 'DocAssocPrec'.
 toDocAssocPrecF
   :: PortrayalF (DocAssocPrec SyntaxClass)
@@ -263,9 +328,7 @@ toDocAssocPrecF = \case
   LitIntF x -> \_ _ -> P.annotate (Literal IntLit) $ pretty x
   LitRatF x -> \_ _ ->
     P.annotate (Literal RatLit) $ pretty (fromRational x :: Double)
-  LitStrF x -> \_ _ ->
-    -- Pretty Text instance is unquoted, so use 'show' to quote/escape.
-    P.annotate (Literal StrLit) $ pretty (show x)
+  LitStrF x -> \_ _ -> ppStrLit x
   LitCharF x -> \_ _ ->
     -- Likewise Char
     P.annotate (Literal CharLit) $ pretty (show x)

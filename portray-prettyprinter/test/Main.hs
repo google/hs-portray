@@ -15,17 +15,42 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Main where
 
+import qualified Data.Text as T
+import GHC.Read (readLitChar)
+import GHC.Show (showLitChar)
+
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
+import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit ((@?=))
+import Test.QuickCheck ((===), Property)
 
 import Data.Portray
 import Data.Portray.Prettyprinter
+
+-- 'read' doesn't implement this feature of Haskell string literals, so strip
+-- it out ourselves.
+stripEscapedWhitespace :: String -> String
+stripEscapedWhitespace = \case
+  [] -> []
+  '\\' : c : rest
+    | c `elem` [' ', '\t', '\n'] ->
+        stripEscapedWhitespace $ tail $ dropWhile (/= '\\') rest
+  -- showLitChar doesn't have to escape '"', but we do.
+  ('\\' : '"' : rest) -> '\\' : '"' : stripEscapedWhitespace rest
+  ('\\' : s) | ((c, rest):_) <- readLitChar ('\\' : s) ->
+        showLitChar c (stripEscapedWhitespace rest)
+  c:rest -> c : stripEscapedWhitespace rest
+
+propTextRoundTrips :: String -> Property
+propTextRoundTrips t =
+  t === read (stripEscapedWhitespace $ T.unpack $ showPortrayal (T.pack t))
 
 main :: IO ()
 main = defaultMain
@@ -234,5 +259,9 @@ main = defaultMain
           prettyShowPortrayal
               (Apply (Name "Just") [TySig (LitInt 2) (Name "Int")]) @?=
             "Just (2 :: Int)"
+      ]
+
+  , testGroup "StrLit"
+      [ testProperty "Text-round-trips" propTextRoundTrips
       ]
   ]
