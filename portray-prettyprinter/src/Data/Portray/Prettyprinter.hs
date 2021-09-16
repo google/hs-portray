@@ -106,11 +106,12 @@ module Data.Portray.Prettyprinter
          , prettyShowPortrayal, colorShowPortrayal
          ) where
 
+import Data.Char (isDigit)
 import Data.Functor ((<&>))
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (putStrLn)
-import GHC.Show (showLitString)
+import GHC.Show (showLitChar, showLitString)
 
 import Prettyprinter (Doc, Pretty(..))
 import qualified Prettyprinter.Render.Terminal as A -- for ANSI
@@ -166,6 +167,7 @@ data LitKind = IntLit | RatLit | CharLit | StrLit
 data SyntaxClass
   = Identifier IdentKind
   | Literal LitKind
+  | EscapeSequence
   | Keyword
   | Structural -- ^ Parens, brackets, and other fixed syntactic symbols.
 
@@ -180,6 +182,7 @@ defaultStyling = \case
   Literal k -> case k of
     StrLit -> A.colorDull A.Blue
     _      -> A.colorDull A.Blue
+  EscapeSequence -> A.colorDull A.Red
   Keyword -> A.colorDull A.Green
   Structural -> A.colorDull A.Green
 
@@ -281,6 +284,17 @@ linesSep s0 = go s0
     let (line, rest) = T.break (== '\n') s
     in  line : if T.null rest then [] else go (T.tail rest)
 
+charIsEscaped, strCharIsEscaped :: Char -> Bool
+charIsEscaped c = [c] /= showLitChar c ""
+strCharIsEscaped '"' = True
+strCharIsEscaped c = charIsEscaped c
+
+-- After a numeric escape, we need a \&; to that end, detect numeric escapes.
+charIsNumericEscape :: Char -> Bool
+charIsNumericEscape c0 = case showLitChar c0 "" of
+  ('\\' : c : _) -> isDigit c
+  _ -> False
+
 ppStrLit :: Text -> Doc SyntaxClass
 ppStrLit unescaped =
   P.annotate (Literal StrLit) $
@@ -289,21 +303,41 @@ ppStrLit unescaped =
   -- Then prefer breaking on newlines when the next line doesn't fit.
   foldl01
     (\x l ->
-      x <> P.group (P.flatAlt ("\\n" <> backslashBreak <> l) ("\\n" <> l)))
+      x <> P.group (P.flatAlt (nl <> backslashBreak <> l) (nl <> l)))
     id
     mempty
     (ppLine <$> escapedLinesOfWords)
  where
+  nl = P.annotate EscapeSequence "\\n"
+
+  ppWord :: Text -> Doc SyntaxClass
+  ppWord "" = mempty
+  ppWord w =
+    let (toEscape, rest) = T.span strCharIsEscaped w
+        (plain, rest') = T.break strCharIsEscaped rest
+        sep =
+          -- Do we need to insert a \& to separate a numeric escape from a
+          -- following digit?
+          if not (T.null toEscape) &&
+               not (T.null plain) &&
+               charIsNumericEscape (T.last toEscape) &&
+               isDigit (T.head plain)
+             then "\\&"
+             else mempty
+        escaped = pretty (showLitString (T.unpack toEscape) "") <> sep
+    in  P.annotate EscapeSequence escaped <> text plain <> ppWord rest'
+
   escapedLinesOfWords :: [[(Doc SyntaxClass, Doc SyntaxClass)]]
   escapedLinesOfWords =
     map
-        (\ (w, ws) ->
-          (pretty $ showLitString (T.unpack w) "", ppWhitespace ws)) .
+        (\ (w, ws) -> (ppWord w, ppWhitespace ws)) .
       wordsSep <$>
     linesSep unescaped
 
   ppWhitespace :: Text -> Doc SyntaxClass
-  ppWhitespace = text . T.concatMap (\case '\t' -> "\\t"; c -> T.pack [c])
+  ppWhitespace =
+    P.annotate EscapeSequence .
+    text . T.concatMap (\case '\t' -> "\\t"; c -> T.pack [c])
 
   ppLine :: [(Doc SyntaxClass, Doc SyntaxClass)] -> Doc SyntaxClass
   ppLine ws =
@@ -317,7 +351,7 @@ ppStrLit unescaped =
       mempty
       ws
 
-  backslashBreak = "\\" <> P.line' <> "\\"
+  backslashBreak = P.annotate EscapeSequence $ "\\" <> P.line' <> "\\"
 
 -- | Render one layer of 'PortrayalF' to 'DocAssocPrec'.
 toDocAssocPrecF
@@ -331,7 +365,10 @@ toDocAssocPrecF = \case
   LitStrF x -> \_ _ -> ppStrLit x
   LitCharF x -> \_ _ ->
     -- Likewise Char
-    P.annotate (Literal CharLit) $ pretty (show x)
+    P.annotate (Literal CharLit) $
+    P.enclose "'" "'" $
+    (if charIsEscaped x then P.annotate EscapeSequence else id) $
+    pretty $ showLitChar x ""
   OpaqueF txt -> \_ _ -> text txt
   ApplyF fn [] -> \_ _ -> fn AssocL 10
   ApplyF fn xs -> \lr p ->
