@@ -431,6 +431,14 @@ pattern Nest n x = Portrayal (Fix (NestF n (Coerced x)))
 class Portray a where
   portray :: a -> Portrayal
 
+  -- | Portray a list of the given element type
+  --
+  -- This is part of a Haskell98 mechanism for special-casing 'String' to print
+  -- differently from other lists; clients of the library can largely ignore
+  -- it.
+  portrayList :: [a] -> Portrayal
+  portrayList = List . map portray
+
 -- | Convenience for using a 'Show' instance and wrapping the result in 'Atom'.
 showAtom :: Show a => a -> Portrayal
 showAtom = strAtom . show
@@ -593,8 +601,11 @@ newtype ShowAtom a = ShowAtom { unShowAtom :: a }
 instance Show a => Portray (ShowAtom a) where
   portray = showAtom . unShowAtom
 
+instance Portray Char where
+  portray = LitChar
+  portrayList = LitStr . T.pack
+
 instance Portray () where portray () = Tuple []
-instance Portray Char where portray = LitChar
 instance Portray Text where portray = LitStr
 
 instance Portray a => Portray (Ratio a) where
@@ -626,7 +637,7 @@ instance Portray a => Portray (Const a b) where
   portray (Const x) = Apply (Name $ Ident ConIdent "Const") [portray x]
 
 instance Portray a => Portray [a] where
-  portray = List . map portray
+  portray = portrayList
 
 deriving via Wrapped Generic (Proxy a) instance Portray (Proxy a)
 

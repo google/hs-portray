@@ -82,6 +82,8 @@ main = defaultMain
           portray (Just ()) @?= Apply (Name (Ident ConIdent "Just")) [Tuple []]
       ]
 
+  , testCase "portray String" $ portray ("aoeu" :: String) @?= LitStr "aoeu"
+
   , testCase "portray Void" $ const () (\x -> portray @Void x) @?= ()
 
   , testGroup "tuples"

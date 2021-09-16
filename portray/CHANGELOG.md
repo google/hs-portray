@@ -6,3 +6,4 @@ Initial version.
 
 * Split Atom into literals, identifiers, and opaque text.
 * Make operator names and record field names `Ident`s.
+* Special-case `String`s so they don't get formatted as lists of `Char`s.
