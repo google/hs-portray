@@ -183,14 +183,14 @@ defaultStyling = \case
   Identifier k -> case k of
     OpConIdent -> A.color A.Magenta
     OpIdent -> A.colorDull A.Yellow
-    ConIdent -> A.color A.Magenta
+    ConIdent -> mempty
     VarIdent -> mempty
   Literal k -> case k of
     StrLit -> A.colorDull A.Blue
-    _      -> A.colorDull A.Blue
+    _      -> A.colorDull A.Cyan
   EscapeSequence -> A.colorDull A.Red
   Keyword -> A.colorDull A.Green
-  Structural -> A.colorDull A.Green
+  Structural -> mempty
 
 -- | An escape-sequence predicate to escape any non-ASCII character.
 escapeNonASCII :: Char -> Bool
