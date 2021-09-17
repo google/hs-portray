@@ -52,43 +52,50 @@ propTextRoundTrips :: String -> Property
 propTextRoundTrips t =
   t === read (stripEscapedWhitespace $ T.unpack $ showPortrayal (T.pack t))
 
+propStringRoundTrips :: String -> Property
+propStringRoundTrips t =
+  t === read (stripEscapedWhitespace $ T.unpack $ showPortrayal t)
+
+propCharRoundTrips :: Char -> Property
+propCharRoundTrips c = c === read (T.unpack $ showPortrayal c)
+
 main :: IO ()
 main = defaultMain
   [ testGroup "Atom"
-      [ testCase "()" $ prettyShowPortrayal (Tuple []) @?= "()"
-      , testCase "2" $ prettyShowPortrayal (LitInt 2) @?= "2"
+      [ testCase "()" $ basicShowPortrayal (Tuple []) @?= "()"
+      , testCase "2" $ basicShowPortrayal (LitInt 2) @?= "2"
       ]
 
   , testGroup "Apply"
       [ testCase "nullary" $
-          prettyShowPortrayal (Apply (Name "Nothing") []) @?= "Nothing"
+          basicShowPortrayal (Apply (Name "Nothing") []) @?= "Nothing"
       , testCase "nullary 2" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Apply (Name "id") [Apply (Name "Nothing") []]) @?=
             "id Nothing"
       , testCase "unary" $
-          prettyShowPortrayal (Apply (Name "Just") [LitInt 2]) @?= "Just 2"
+          basicShowPortrayal (Apply (Name "Just") [LitInt 2]) @?= "Just 2"
       , testCase "parens" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Apply (Name "Just") [Apply (Name "Just") [LitInt 2]]) @?=
             "Just (Just 2)"
       , testCase "binary" $
-          prettyShowPortrayal (Apply (Name "These") [LitInt 2, LitInt 4]) @?=
+          basicShowPortrayal (Apply (Name "These") [LitInt 2, LitInt 4]) @?=
             "These 2 4"
       , testCase "nested" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Apply (Apply (Name "These") [LitInt 2]) [LitInt 4]) @?=
             "These 2 4"
       ]
 
   , testGroup "Binop"
       [ testCase "operator" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Binop ":|" (infixr_ 5) (LitInt 5) (List [])) @?=
             "5 :| []"
 
       , testCase "con" $
-          prettyShowPortrayal 
+          basicShowPortrayal
               (Binop
                 (Ident ConIdent "InfixCon")
                 (infixl_ 9)
@@ -97,7 +104,7 @@ main = defaultMain
             "2 `InfixCon` True"
 
       , testCase "nest prec" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Binop
                 "+"
                 (infixl_ 6)
@@ -106,7 +113,7 @@ main = defaultMain
             "2 * 4 + 6"
 
       , testCase "nest anti-prec" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Binop
                 "*"
                 (infixl_ 7)
@@ -115,7 +122,7 @@ main = defaultMain
             "(2 + 4) * 6"
 
       , testCase "nest assoc" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Binop
                 "+"
                 (infixl_ 6)
@@ -124,7 +131,7 @@ main = defaultMain
             "2 + 4 + 6"
 
       , testCase "nest anti-assoc" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Binop
                 "+"
                 (infixl_ 6)
@@ -135,12 +142,12 @@ main = defaultMain
 
   , testGroup "Tuple"
       [ testCase "pair" $
-          prettyShowPortrayal (Tuple [LitInt 2, LitInt 4]) @?= "(2, 4)"
+          basicShowPortrayal (Tuple [LitInt 2, LitInt 4]) @?= "(2, 4)"
       , testCase "triple" $
-          prettyShowPortrayal (Tuple [LitInt 2, LitInt 4, LitInt 6]) @?=
+          basicShowPortrayal (Tuple [LitInt 2, LitInt 4, LitInt 6]) @?=
             "(2, 4, 6)"
       , testCase "line-break" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Tuple [strAtom "222", strAtom (replicate 80 '2')]) @?=
             "( 222\n\
             \, 2222222222222222222222222222222222222222222222222222222222222\
@@ -149,23 +156,23 @@ main = defaultMain
       ]
 
   , testGroup "List"
-      [ testCase "empty" $ prettyShowPortrayal (List []) @?= "[]"
-      , testCase "singleton" $ prettyShowPortrayal (List [LitInt 2]) @?=
+      [ testCase "empty" $ basicShowPortrayal (List []) @?= "[]"
+      , testCase "singleton" $ basicShowPortrayal (List [LitInt 2]) @?=
           "[2]"
       ]
 
   , testGroup "LambdaCase"
-      [ testCase "empty" $ prettyShowPortrayal (LambdaCase []) @?= "\\case {}"
+      [ testCase "empty" $ basicShowPortrayal (LambdaCase []) @?= "\\case {}"
       , testCase "singleton" $
-          prettyShowPortrayal (LambdaCase [(Tuple [], LitInt 2)]) @?=
+          basicShowPortrayal (LambdaCase [(Tuple [], LitInt 2)]) @?=
             "\\case {() -> 2}"
       , testCase "two" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (LambdaCase
                 [(Name "True", LitInt 2), (Name "False", LitInt 4)]) @?=
             "\\case {True -> 2; False -> 4}"
       , testCase "line-break" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (LambdaCase
                 [ (Name "True", strAtom (replicate 40 '2'))
                 , (Name "False", strAtom (replicate 40 '4'))
@@ -175,7 +182,7 @@ main = defaultMain
             \  ; False -> 4444444444444444444444444444444444444444\n\
             \  }"
       , testCase "no-parens" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (LambdaCase
                 [( Apply (Name "Just") [LitInt 2]
                  , Apply (Name "Just") [LitInt 4]
@@ -184,23 +191,23 @@ main = defaultMain
       ]
 
   , testGroup "Record"
-      [ testCase "empty" $ prettyShowPortrayal (Record (Name "Nothing") []) @?=
+      [ testCase "empty" $ basicShowPortrayal (Record (Name "Nothing") []) @?=
           "Nothing"
       , testCase "singleton" $
-            prettyShowPortrayal
+            basicShowPortrayal
               (Record
                 (Name "Just")
                 [FactorPortrayal "it" (LitInt 2)]) @?=
           "Just {it = 2}"
       , testCase "two" $
-            prettyShowPortrayal
+            basicShowPortrayal
               (Record (Name "These")
                 [ FactorPortrayal "l" (LitInt 2)
                 , FactorPortrayal "r" (LitInt 4)
                 ]) @?=
           "These {l = 2, r = 4}"
       , testCase "line-break" $
-            prettyShowPortrayal
+            basicShowPortrayal
               (Record (Name "These")
                 [ FactorPortrayal "l" (portray @[Int] [0..10])
                 , FactorPortrayal "r" (portray @[Int] [0..10])
@@ -210,7 +217,7 @@ main = defaultMain
           \  , r = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n\
           \  }"
       , testCase "break-equals" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Record (Name "These")
                 [ FactorPortrayal
                     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -224,14 +231,14 @@ main = defaultMain
 
   , testGroup "TyApp"
       [ testCase "con" $
-          prettyShowPortrayal (TyApp (Name "typeRep") (Name "Int")) @?=
+          basicShowPortrayal (TyApp (Name "typeRep") (Name "Int")) @?=
             "typeRep @Int"
       , testCase "parens" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (TyApp (Name "typeRep") (Apply (Name "Maybe") [Name "Int"])) @?=
             "typeRep @(Maybe Int)"
       , testCase "line-break" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (TyApp
                 (strAtom $ replicate 50 'a')
                 (strAtom $ replicate 50 'a')) @?=
@@ -240,28 +247,30 @@ main = defaultMain
       ]
 
   , testGroup "TySig"
-      [ testCase "con" $ prettyShowPortrayal (TySig (LitInt 2) (Name "Int")) @?=
+      [ testCase "con" $ basicShowPortrayal (TySig (LitInt 2) (Name "Int")) @?=
           "2 :: Int"
       , testCase "no-parens" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (TySig
                 (Apply (Name "Just") [LitInt 2])
                 (Apply (Name "Maybe") [Name "Int"])) @?=
             "Just 2 :: Maybe Int"
       , testCase "line-break" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (TySig
                 (strAtom $ replicate 50 'a')
                 (strAtom $ replicate 50 'a')) @?=
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\
             \  :: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       , testCase "parens" $
-          prettyShowPortrayal
+          basicShowPortrayal
               (Apply (Name "Just") [TySig (LitInt 2) (Name "Int")]) @?=
             "Just (2 :: Int)"
       ]
 
   , testGroup "StrLit"
-      [ testProperty "Text-round-trips" propTextRoundTrips
+      [ testProperty "Text round-trips" propTextRoundTrips
+      , testProperty "String round-trips" propStringRoundTrips
+      , testProperty "Char round-trips" propCharRoundTrips
       ]
   ]

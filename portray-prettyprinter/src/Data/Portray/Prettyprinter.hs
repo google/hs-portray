@@ -39,7 +39,7 @@
 --
 -- This usage provides colorized pretty-printing by default with 'pp'.  Note if
 -- you don't like the default choice of colors or don't want colors at all, you
--- can roll your own 'pp' function with 'portray', 'portrayalToDoc' and your
+-- can roll your own 'pp' function with 'portray', 'toDocAssocPrec' and your
 -- @prettyprinter@ rendering backend of choice.
 --
 -- The second usage is to use @portray@'s generic deriving to provide derived
@@ -95,23 +95,25 @@ module Data.Portray.Prettyprinter
            -- * DerivingVia wrapper
          , WrappedPortray(..)
            -- * Rendering
+           -- ** Configuration
+         , Config, defaultConfig
+           -- *** Escape Sequences
+         , setShouldEscapeChar, escapeNonASCII, allowUnicode
            -- ** Colorization
          , defaultStyling, SyntaxClass(..)
            -- ** With Associativity
          , DocAssocPrec, toDocAssocPrecF, toDocAssocPrec
-           -- ** With Precedence
-         , portrayalToDocPrecF, portrayalToDocPrec
            -- ** Convenience Functions
-         , portrayalToDoc
-         , prettyShowPortrayal, colorShowPortrayal
+         , portrayalToDoc, prettyShowPortrayal, basicShowPortrayal
          ) where
 
-import Data.Char (isDigit)
+import Data.Char (isAscii, isDigit, isPrint)
+import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (putStrLn)
-import GHC.Show (showLitChar, showLitString)
+import GHC.Show (showLitChar)
 
 import Prettyprinter (Doc, Pretty(..))
 import qualified Prettyprinter.Render.Terminal as A -- for ANSI
@@ -131,22 +133,26 @@ import Data.Portray.Diff (Diff(..))
 -- This uses ANSI color codes, so take care not to use it in contexts where it
 -- might output to something other than a terminal.
 pp :: Portray a => a -> IO ()
-pp = T.putStrLn . colorShowPortrayal . portray
+pp = T.putStrLn . prettyShowPortrayal . portray
 
 -- | Pretty-print a value using its 'Portray' instance.
+--
+-- This uses no ANSI terminal escape codes and escapes all non-ASCII characters.
 showPortrayal :: Portray a => a -> Text
-showPortrayal = prettyShowPortrayal . portray
+showPortrayal = basicShowPortrayal . portray
 
 -- | Pretty-print a diff between two values to stdout using a 'Diff' instance.
 --
 -- This uses ANSI color codes, so take care not to use it in contexts where it
 -- might output to something other than a terminal.
 ppd :: Diff a => a -> a -> IO ()
-ppd x = T.putStrLn . maybe "_" colorShowPortrayal . diff x
+ppd x = T.putStrLn . maybe "_" prettyShowPortrayal . diff x
 
 -- | Pretty-print a diff between two values using a 'Diff' instance.
+--
+-- This uses no ANSI terminal escape codes and escapes all non-ASCII characters.
 showDiff :: Diff a => a -> a -> Text
-showDiff x = maybe "_" prettyShowPortrayal . diff x
+showDiff x = maybe "_" basicShowPortrayal . diff x
 
 -- | A 'Doc' that varies according to associativity and precedence context.
 type DocAssocPrec ann = Assoc -> Rational -> Doc ann
@@ -186,9 +192,50 @@ defaultStyling = \case
   Keyword -> A.colorDull A.Green
   Structural -> A.colorDull A.Green
 
+-- | An escape-sequence predicate to escape any non-ASCII character.
+escapeNonASCII :: Char -> Bool
+escapeNonASCII = not . isAscii
+
+-- | An escape-sequence predicate to escape as little as possible.
+allowUnicode :: Char -> Bool
+allowUnicode = const False
+
+-- | Configuration for the conversion to 'Doc'.
+--
+-- Includes the following:
+--
+-- * 'setShouldEscapeChar', a function determining whether an escapable
+-- character should be escaped in a string or character literal.  Unprintable
+-- characters, backslashes, and the relevant quote for the current literal type
+-- are always escaped, and anything that wouldn't be escaped by 'Show' is never
+-- escaped.
+--
+-- For forwards-compatibility reasons, the field selectors and constructor of
+-- this type are hidden; use the provided setters to build a config.  For
+-- example:
+--
+-- @
+-- config =
+--   defaultConfig
+--     & setShouldEscapeChar (const True) -- Escape everything we can.
+-- @
+data Config = Config
+  { _shouldEscapeChar :: Char -> Bool
+  }
+
+-- | Set the predicate for whether to escape a given character; see 'Config'.
+setShouldEscapeChar :: (Char -> Bool) -> Config -> Config
+setShouldEscapeChar f _ = Config f
+
+-- | A sensible default configuration to build on.
+--
+-- Uses 'escapeNonASCII'.
+defaultConfig :: Config
+defaultConfig = Config escapeNonASCII
+
 -- | Convert a 'Portrayal' to a 'Doc'.
-portrayalToDoc :: Portrayal -> Doc SyntaxClass
-portrayalToDoc t = portrayalToDocPrec t (-1)
+portrayalToDoc :: Config -> Portrayal -> Doc SyntaxClass
+portrayalToDoc cfg t = toDocAssocPrec cfg t AssocNope (-1)
 
 parens :: Doc SyntaxClass -> Doc SyntaxClass
 parens d =
@@ -287,19 +334,53 @@ linesSep s0 = go s0
     let (line, rest) = T.break (== '\n') s
     in  line : if T.null rest then [] else go (T.tail rest)
 
-charIsEscaped, strCharIsEscaped :: Char -> Bool
-charIsEscaped c = [c] /= showLitChar c ""
-strCharIsEscaped '"' = True
-strCharIsEscaped c = charIsEscaped c
+-- Returns True for characters that must always be escaped regardless of
+-- configuration; this is unprintable characters and backlashes.
+charAlwaysEscaped :: Char -> Bool
+charAlwaysEscaped c = not (isPrint c) || c == '\\'
+
+shouldEscapeChar :: Config -> Char -> Bool
+shouldEscapeChar cfg c = charAlwaysEscaped c || _shouldEscapeChar cfg c
+
+showLitEscapesChar :: Char -> Bool
+showLitEscapesChar c = [c] /= showLitChar c ""
+
+litCharIsEscaped :: Config -> Char -> Bool
+litCharIsEscaped cfg = \case
+  '\'' -> True
+  c    -> showLitEscapesChar c && shouldEscapeChar cfg c
+
+strCharIsEscaped :: Config -> Char -> Bool
+strCharIsEscaped cfg = \case
+  '"' -> True
+  c   -> showLitEscapesChar c && shouldEscapeChar cfg c
 
 -- After a numeric escape, we need a \&; to that end, detect numeric escapes.
-charIsNumericEscape :: Char -> Bool
-charIsNumericEscape c0 = case showLitChar c0 "" of
-  ('\\' : c : _) -> isDigit c
-  _ -> False
+needsEmptyEscape :: Config -> Char -> Char -> Bool
+needsEmptyEscape cfg c0 c1 =
+  strCharIsEscaped cfg c0 &&
+  case showLitChar c0 "" of
+    "\\SO" -> c1 == 'H'
+    ('\\' : c : _) -> isDigit c && isDigit c1
+    _ -> False
 
-ppStrLit :: Text -> Doc SyntaxClass
-ppStrLit unescaped =
+escapeChar :: Config -> Char -> Text
+escapeChar cfg c
+  | shouldEscapeChar cfg c = T.pack (showLitChar c "")
+  | otherwise              = T.singleton c
+
+escapeLitChar :: Config -> Char -> Text
+escapeLitChar cfg = \case
+  '\'' -> "\\'"
+  c -> escapeChar cfg c
+
+escapeStrChar :: Config -> Char -> Text
+escapeStrChar cfg = \case
+  '"' -> "\\\""
+  c -> escapeChar cfg c
+
+ppStrLit :: Config -> Text -> Doc SyntaxClass
+ppStrLit cfg unescaped =
   P.annotate (Literal StrLit) $
   P.group $ -- Prefer putting the whole thing on this line whenever possible.
   P.enclose "\"" "\"" $
@@ -316,18 +397,17 @@ ppStrLit unescaped =
   ppWord :: Text -> Doc SyntaxClass
   ppWord "" = mempty
   ppWord w =
-    let (toEscape, rest) = T.span strCharIsEscaped w
-        (plain, rest') = T.break strCharIsEscaped rest
+    let (toEscape, rest) = T.span (strCharIsEscaped cfg) w
+        (plain, rest') = T.break (strCharIsEscaped cfg) rest
         sep =
           -- Do we need to insert a \& to separate a numeric escape from a
           -- following digit?
           if not (T.null toEscape) &&
                not (T.null plain) &&
-               charIsNumericEscape (T.last toEscape) &&
-               isDigit (T.head plain)
+               needsEmptyEscape cfg (T.last toEscape) (T.head plain)
              then "\\&"
              else mempty
-        escaped = pretty (showLitString (T.unpack toEscape) "") <> sep
+        escaped = pretty (T.concatMap (escapeStrChar cfg) toEscape) <> sep
     in  P.annotate EscapeSequence escaped <> text plain <> ppWord rest'
 
   escapedLinesOfWords :: [[(Doc SyntaxClass, Doc SyntaxClass)]]
@@ -340,7 +420,7 @@ ppStrLit unescaped =
   ppWhitespace :: Text -> Doc SyntaxClass
   ppWhitespace =
     P.annotate EscapeSequence .
-    text . T.concatMap (\case '\t' -> "\\t"; c -> T.pack [c])
+    text . T.concatMap (escapeStrChar cfg)
 
   ppLine :: [(Doc SyntaxClass, Doc SyntaxClass)] -> Doc SyntaxClass
   ppLine ws =
@@ -358,20 +438,21 @@ ppStrLit unescaped =
 
 -- | Render one layer of 'PortrayalF' to 'DocAssocPrec'.
 toDocAssocPrecF
-  :: PortrayalF (DocAssocPrec SyntaxClass)
+  :: Config
+  -> PortrayalF (DocAssocPrec SyntaxClass)
   -> DocAssocPrec SyntaxClass
-toDocAssocPrecF = \case
+toDocAssocPrecF cfg = \case
   NameF nm -> \_ _ -> ppPrefix nm
   LitIntF x -> \_ _ -> P.annotate (Literal IntLit) $ pretty x
   LitRatF x -> \_ _ ->
     P.annotate (Literal RatLit) $ pretty (fromRational x :: Double)
-  LitStrF x -> \_ _ -> ppStrLit x
+  LitStrF x -> \_ _ -> ppStrLit cfg x
   LitCharF x -> \_ _ ->
     -- Likewise Char
     P.annotate (Literal CharLit) $
     P.enclose "'" "'" $
-    (if charIsEscaped x then P.annotate EscapeSequence else id) $
-    pretty $ showLitChar x ""
+    (if litCharIsEscaped cfg x then P.annotate EscapeSequence else id) $
+    text $ escapeLitChar cfg x
   OpaqueF txt -> \_ _ -> text txt
   ApplyF fn [] -> \_ _ -> fn AssocL 10
   ApplyF fn xs -> \lr p ->
@@ -428,34 +509,26 @@ toDocAssocPrecF = \case
   UnlinesF ls -> \_ _ -> P.vcat (ls <&> \l -> l AssocNope (-1))
   NestF n x -> \_ _ -> P.nest n (x AssocNope (-1))
 
-toDocPrec :: DocAssocPrec ann -> Rational -> Doc ann
-toDocPrec dap = dap AssocNope . subtract 1
-
--- | Render a 'PortrayalF' to a 'Doc'.
-portrayalToDocPrecF
-  :: PortrayalF (DocAssocPrec SyntaxClass) -> Rational -> Doc SyntaxClass
-portrayalToDocPrecF = toDocPrec . toDocAssocPrecF
-
 -- | Render a 'Portrayal' to a 'Doc' with support for operator associativity.
-toDocAssocPrec :: Portrayal -> DocAssocPrec SyntaxClass
-toDocAssocPrec = cata toDocAssocPrecF . unPortrayal
-
--- | Render a 'Portrayal' to a 'Doc' with only operator precedence.
-portrayalToDocPrec :: Portrayal -> Rational -> Doc SyntaxClass
-portrayalToDocPrec = toDocPrec . toDocAssocPrec
+toDocAssocPrec :: Config -> Portrayal -> DocAssocPrec SyntaxClass
+toDocAssocPrec cfg = cata (toDocAssocPrecF cfg) . unPortrayal
 
 -- | Convenience function for rendering a 'Portrayal' to a 'Text'.
-prettyShowPortrayal :: Portrayal -> Text
-prettyShowPortrayal p =
+basicShowPortrayal :: Portrayal -> Text
+basicShowPortrayal p =
   R.renderStrict $ P.layoutPretty P.defaultLayoutOptions $
-  toDocAssocPrec p AssocNope (-1)
+  toDocAssocPrec defaultConfig p AssocNope (-1)
 
 -- | Convenience function for rendering a 'Portrayal' to colorized 'Text'.
-colorShowPortrayal :: Portrayal -> Text
-colorShowPortrayal p =
+prettyShowPortrayal :: Portrayal -> Text
+prettyShowPortrayal p =
   A.renderStrict $ fmap defaultStyling $
   P.layoutPretty P.defaultLayoutOptions $
-  toDocAssocPrec p AssocNope (-1)
+  toDocAssocPrec
+    (defaultConfig & setShouldEscapeChar allowUnicode)
+    p
+    AssocNope
+    (-1)
 
 -- | A newtype providing a 'Pretty' instance via 'Portray', for @DerivingVia@.
 --
@@ -467,4 +540,5 @@ newtype WrappedPortray a = WrappedPortray { unWrappedPortray :: a }
 
 -- | Provide an instance for 'Pretty' by way of 'Portray'.
 instance Portray a => Pretty (WrappedPortray a) where
-  pretty x = P.unAnnotate $ portrayalToDocPrec (portray $ unWrappedPortray x) 0
+  pretty x =
+    P.unAnnotate $ portrayalToDoc defaultConfig (portray $ unWrappedPortray x)
