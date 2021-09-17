@@ -26,13 +26,14 @@ description: |
   <https://hackage.haskell.org/package/portray-pretty portray-pretty>, and is
   still very similar.  However, @prettyprinter@ gives more flexibility to
   documents at the cost of requiring more behavior to be specified explicitly.
-  As such, some formats can be nicer with the @prettyprinter@ backend, but as
-  of the initial release, this backend is less mature and hasn't been used in
-  practice, so there are likely more formatting bugs.  Please do file bugs on
-  the GitHub issue tracker if you find anything that seems obviously wrong!
+  As such, some formats are nicer with the @prettyprinter@ backend,
+  configurable syntax highlighting is supported, and unicode escaping is
+  configurable.  However, this backend is less mature and hasn't been used as
+  much in practice, so there are likely more formatting bugs than in
+  @portray-pretty@.  Please do file bugs on the GitHub issue tracker if you
+  find anything that seems obviously wrong!
 
-  This variant provides automatic syntax highlighting on output of 'pp' and
-  'ppd' by default.  Try using 'pp' as the print function in GHCi:
+  Try using 'pp' as the print function in GHCi:
   @:set -interactive-print=Data.Portray.Prettyprinter.pp@!
 license: Apache-2.0
 author: Andrew Pritchard <awpr@google.com>

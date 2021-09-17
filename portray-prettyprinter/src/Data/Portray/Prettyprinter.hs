@@ -98,7 +98,7 @@ module Data.Portray.Prettyprinter
            -- ** Configuration
          , Config, defaultConfig
            -- *** Escape Sequences
-         , setShouldEscapeChar, escapeNonASCII, allowUnicode
+         , setShouldEscapeChar, escapeNonASCII, escapeSpecialOnly
            -- ** Colorization
          , defaultStyling, SyntaxClass(..)
            -- ** With Associativity
@@ -197,8 +197,8 @@ escapeNonASCII :: Char -> Bool
 escapeNonASCII = not . isAscii
 
 -- | An escape-sequence predicate to escape as little as possible.
-allowUnicode :: Char -> Bool
-allowUnicode = const False
+escapeSpecialOnly :: Char -> Bool
+escapeSpecialOnly = const False
 
 -- | Configuration for the conversion to 'Doc'.
 --
@@ -525,7 +525,7 @@ prettyShowPortrayal p =
   A.renderStrict $ fmap defaultStyling $
   P.layoutPretty P.defaultLayoutOptions $
   toDocAssocPrec
-    (defaultConfig & setShouldEscapeChar allowUnicode)
+    (defaultConfig & setShouldEscapeChar escapeSpecialOnly)
     p
     AssocNope
     (-1)

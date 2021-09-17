@@ -21,10 +21,14 @@
 
 module Main where
 
+import Data.Function ((&))
+import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Read (readLitChar)
 import GHC.Show (showLitChar)
 
+import qualified Prettyprinter as P
+import qualified Prettyprinter.Render.Text as R
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -48,16 +52,22 @@ stripEscapedWhitespace = \case
         showLitChar c (stripEscapedWhitespace rest)
   c:rest -> c : stripEscapedWhitespace rest
 
-propTextRoundTrips :: String -> Property
-propTextRoundTrips t =
-  t === read (stripEscapedWhitespace $ T.unpack $ showPortrayal (T.pack t))
+showPortrayalCfg :: Portray a => Config -> a -> Text
+showPortrayalCfg cfg x =
+  R.renderStrict $ P.layoutPretty P.defaultLayoutOptions $
+  toDocAssocPrec cfg (portray x) AssocNope (-1)
 
-propStringRoundTrips :: String -> Property
-propStringRoundTrips t =
-  t === read (stripEscapedWhitespace $ T.unpack $ showPortrayal t)
+propTextRoundTrips :: Config -> String -> Property
+propTextRoundTrips cfg t =
+  t ===
+    read (stripEscapedWhitespace $ T.unpack $ showPortrayalCfg cfg $ T.pack t)
 
-propCharRoundTrips :: Char -> Property
-propCharRoundTrips c = c === read (T.unpack $ showPortrayal c)
+propStringRoundTrips :: Config -> String -> Property
+propStringRoundTrips cfg t =
+  t === read (stripEscapedWhitespace $ T.unpack $ showPortrayalCfg cfg t)
+
+propCharRoundTrips :: Config -> Char -> Property
+propCharRoundTrips cfg c = c === read (T.unpack $ showPortrayalCfg cfg c)
 
 main :: IO ()
 main = defaultMain
@@ -269,8 +279,20 @@ main = defaultMain
       ]
 
   , testGroup "StrLit"
-      [ testProperty "Text round-trips" propTextRoundTrips
-      , testProperty "String round-trips" propStringRoundTrips
-      , testProperty "Char round-trips" propCharRoundTrips
+      [ testProperty "Text round-trips ascii"
+          (propTextRoundTrips defaultConfig)
+      , testProperty "String round-trips ascii"
+          (propStringRoundTrips defaultConfig)
+      , testProperty "Char round-trips ascii"
+          (propCharRoundTrips defaultConfig)
+
+      , testProperty "Text round-trips unicode"
+          (propTextRoundTrips unicodeConfig)
+      , testProperty "String round-trips unicode"
+          (propStringRoundTrips unicodeConfig)
+      , testProperty "Char round-trips unicode"
+          (propCharRoundTrips unicodeConfig)
       ]
   ]
+ where
+  unicodeConfig = defaultConfig & setShouldEscapeChar escapeSpecialOnly
