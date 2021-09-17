@@ -450,12 +450,16 @@ class Portray a where
   portrayList = List . map portray
 
 -- | Convenience for using 'show' and wrapping the result in 'Opaque'.
+--
+-- Note this will be excluded from syntax highlighting and layout; see the
+-- cautionary text on 'ShowAtom'.
 showAtom :: Show a => a -> Portrayal
 showAtom = strAtom . show
 
 -- | Convenience for building an 'Opaque' from a 'String'.
 --
--- Note if you just want a string literal, @OverloadedStrings@ is supported.
+-- Note this will be excluded from syntax highlighting for lack of semantic
+-- information; consider using 'Name' instead.
 strAtom :: String -> Portrayal
 strAtom = Opaque . T.pack
 
@@ -602,10 +606,10 @@ deriving via PortrayRatLit Double    instance Portray Double
 
 -- | A newtype wrapper providing a 'Portray' instance via 'showAtom'.
 --
--- Beware that instances made this way will not be subject to internal
--- formatting, and will be shown as plain text all on one line.  It's
--- recommended to derive instances via @'Wrapped' 'Generic'@ or hand-write more
--- detailed instances instead.
+-- Beware that instances made this way will not be subject to syntax
+-- highlighting or layout, and will be shown as plain text all on one line.
+-- It's recommended to derive instances via @'Wrapped' 'Generic'@ or hand-write
+-- more detailed instances instead.
 newtype ShowAtom a = ShowAtom { unShowAtom :: a }
 
 instance Show a => Portray (ShowAtom a) where
