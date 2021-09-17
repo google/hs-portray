@@ -315,8 +315,7 @@ foldl01 f g z = \case
   (x:xs) -> foldl f (g x) xs
 
 -- 'T.words' coalesces adjacent spaces, so it's not suitable for use in
--- 'ppStrLit'; roll our own that considers adjacent spaces to have empty words
--- between them.
+-- 'ppStrLit'; roll our own that preserves the whitespace between words.
 wordsSep :: Text -> [(Text, Text)]
 wordsSep "" = []
 wordsSep s =
@@ -355,7 +354,8 @@ strCharIsEscaped cfg = \case
   '"' -> True
   c   -> showLitEscapesChar c && shouldEscapeChar cfg c
 
--- After a numeric escape, we need a \&; to that end, detect numeric escapes.
+-- Between a numeric escape and a digit, or between \SO and H, we need a \& to
+-- terminate the escape; detect whether we're in one of those cases.
 needsEmptyEscape :: Config -> Char -> Char -> Bool
 needsEmptyEscape cfg c0 c1 =
   strCharIsEscaped cfg c0 &&

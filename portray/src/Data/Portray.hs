@@ -149,7 +149,7 @@ instance IsString Ident where
         | isUpper c -> ConIdent
         | isAlpha c -> VarIdent
         | otherwise -> OpIdent
-      "" -> VarIdent -- *shrug*
+      "" -> VarIdent -- /shrug/
 
 -- | A single level of pseudo-Haskell expression; used to define 'Portrayal'.
 data PortrayalF a
@@ -162,7 +162,7 @@ data PortrayalF a
   | LitStrF !Text
     -- ^ A string literal, stored without escaping or quotes.  e.g. @"hi"@
   | LitCharF !Char
-    -- ^ A character literal.  e.g. @'a'@
+    -- ^ A character literal.  e.g. @\'a\'@
   | OpaqueF !Text
     -- ^ A chunk of opaque text.  e.g. @abc"]def@
   | ApplyF !a [a]
@@ -290,15 +290,15 @@ pattern Opaque txt = Portrayal (Fix (OpaqueF txt))
 -- Given:
 --
 -- @
---     Apply \"These\" ["2", "4"]
+-- Apply (Name \"These\") [LitInt 2, LitInt 4]
 -- @
 --
 -- We render something like @These 2 4@, or if line-wrapped:
 --
 -- @
---     These
---       2
---       4
+-- These
+--   2
+--   4
 -- @
 pattern Apply :: Portrayal -> [Portrayal] -> Portrayal
 pattern Apply f xs = Portrayal (Fix (ApplyF (Coerced f) (Coerced xs)))
@@ -311,10 +311,10 @@ pattern Apply f xs = Portrayal (Fix (ApplyF (Coerced f) (Coerced xs)))
 -- Given:
 --
 -- @
---     Binop OpIdent "+" (infixl_ 6)
---       [ Binop OpIdent "+" (infixl_ 6) ["2", "4"]
---       , "6"
---       ]
+-- Binop (Name "+") (infixl_ 6)
+--   [ Binop (Name "+") (infixl_ 6) [LitInt 2, LitInt 4]
+--   , "6"
+--   ]
 -- @
 --
 -- We render something like: @2 + 4 + 6@
@@ -328,29 +328,32 @@ pattern Binop nm inf x y =
 -- Given:
 --
 -- @
---     List [Apply \"These\" ["2", "4"], Apply \"That\" ["6"]]
+-- List
+--   [ Apply (Name \"These\") [LitInt 2, LitInt 4]
+--   , Apply (Name \"That\") [LitInt 6]
+--   ]
 -- @
 --
 -- We render something like:
 --
 -- @
---     [ These 2 4
---     , That 6
---     ]
+-- [ These 2 4
+-- , That 6
+-- ]
 -- @
 pattern List :: [Portrayal] -> Portrayal
 pattern List xs = Portrayal (Fix (ListF (Coerced xs)))
 
 -- | A tuple.
 --
--- Given @Tuple ["2", "4"]@, we render something like @(2, 4)@
+-- Given @Tuple [LitInt 2, LitInt 4]@, we render something like @(2, 4)@
 pattern Tuple :: [Portrayal] -> Portrayal
 pattern Tuple xs = Portrayal (Fix (TupleF (Coerced xs)))
 
 -- | A lambda-case.
 --
--- Given @LambdaCase [("0", "\"hi\""), ("1", "\"hello\"")]@, we render
--- something like @\case 0 -> "hi"; 1 -> "hello"@.
+-- Given @LambdaCase [(LitInt 0, LitStr "hi"), (LitInt 1, LitStr "hello")]@, we
+-- render something like @\\case 0 -> "hi"; 1 -> "hello"@.
 --
 -- This can be useful in cases where meaningful values effectively appear in
 -- negative position in a type, like in a total map or table with non-integral
@@ -363,35 +366,43 @@ pattern LambdaCase xs = Portrayal (Fix (LambdaCaseF (Coerced xs)))
 -- Given:
 --
 -- @
---     Record \"Identity\" [FactorPortrayal "runIdentity" "2"]
+-- Record
+--   (Name \"Identity\")
+--   [FactorPortrayal (Name "runIdentity") (LitInt 2)]
 -- @
 --
 -- We render something like:
 --
 -- @
---     Identity
---       { runIdentity = 2
---       }
+-- Identity
+--   { runIdentity = 2
+--   }
 -- @
 pattern Record :: Portrayal -> [FactorPortrayal Portrayal] -> Portrayal
 pattern Record x xs = Portrayal (Fix (RecordF (Coerced x) (Coerced xs)))
 
 -- | A type application.
 --
--- Given @TyApp \"Proxy\" \"Int\"@, we render @Proxy \@Int@
+-- Given @TyApp (Name \"Proxy\") (Name \"Int\")@, we render @Proxy \@Int@
 pattern TyApp :: Portrayal -> Portrayal -> Portrayal
 pattern TyApp x t = Portrayal (Fix (TyAppF (Coerced x) (Coerced t)))
 
 -- | An explicit type signature.
 --
--- Given @TySig \"Proxy\" [Apply \"Proxy\" ["Int"]]@, we render
--- @Proxy :: Proxy Int@
+-- Given @TySig (Name \"Proxy\") [Apply (Name \"Proxy\") [Name \"Int\"]]@, we
+-- render @Proxy :: Proxy Int@
 pattern TySig :: Portrayal -> Portrayal -> Portrayal
 pattern TySig x t = Portrayal (Fix (TySigF (Coerced x) (Coerced t)))
 
 -- | A quasiquoter expression.
 --
--- Given @Quot \"expr\" (Binop "+" _ ["x", "!y"])@, we render @[expr| x + !y |]@
+-- Given:
+--
+-- @
+-- Quot (Opaque \"expr\") (Binop (Opaque "+") _ [Opaque "x", Opaque "!y"])
+-- @
+--
+-- We render something like @[expr| x + !y |]@
 pattern Quot :: Text -> Portrayal -> Portrayal
 pattern Quot t x = Portrayal (Fix (QuotF t (Coerced x)))
 
@@ -439,7 +450,7 @@ class Portray a where
   portrayList :: [a] -> Portrayal
   portrayList = List . map portray
 
--- | Convenience for using a 'Show' instance and wrapping the result in 'Atom'.
+-- | Convenience for using 'show' and wrapping the result in 'Opaque'.
 showAtom :: Show a => a -> Portrayal
 showAtom = strAtom . show
 

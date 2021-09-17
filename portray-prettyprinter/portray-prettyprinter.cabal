@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6a075eb599d94baeec64aae158d9794da1ad308a424060665d02f53bda841260
+-- hash: e2a9bf6417f3ae5383fa1d416415d5ed4b7da1643b58ce19d7185857c813a350
 
 name:           portray-prettyprinter
-version:        0.1.1
+version:        0.2.0
 synopsis:       A portray backend using the prettyprinter package.
 description:    This provides a
                 <https://hackage.haskell.org/package/prettyprinter prettyprinter> backend for
