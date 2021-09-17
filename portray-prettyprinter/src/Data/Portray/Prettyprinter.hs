@@ -100,11 +100,12 @@ module Data.Portray.Prettyprinter
            -- *** Escape Sequences
          , setShouldEscapeChar, escapeNonASCII, escapeSpecialOnly
            -- ** Colorization
-         , defaultStyling, SyntaxClass(..)
+         , SyntaxClass(..), defaultStyling, noStyling
            -- ** With Associativity
          , DocAssocPrec, toDocAssocPrecF, toDocAssocPrec
            -- ** Convenience Functions
-         , portrayalToDoc, prettyShowPortrayal, basicShowPortrayal
+         , portrayalToDoc
+         , styleShowPortrayal, prettyShowPortrayal, basicShowPortrayal
          ) where
 
 import Data.Char (isAscii, isDigit, isPrint)
@@ -118,7 +119,6 @@ import GHC.Show (showLitChar)
 import Prettyprinter (Doc, Pretty(..))
 import qualified Prettyprinter.Render.Terminal as A -- for ANSI
 import qualified Prettyprinter as P
-import qualified Prettyprinter.Render.Text as R
 
 import Data.Portray
          ( Assoc(..), Infixity(..), FactorPortrayal(..)
@@ -178,8 +178,13 @@ data SyntaxClass
   | Structural -- ^ Parens, brackets, and other fixed syntactic symbols.
 
 -- | A fairly arbitrary colorization style based on what looked good to me.
-defaultStyling :: SyntaxClass -> A.AnsiStyle
-defaultStyling = \case
+--
+-- To use a custom color mapping, define it the same way this function is
+-- defined, then use it as an argument to 'styleShowPortrayal'.
+-- Consider also wrapping that up into a custom 'pp' function for use at the
+-- REPL or even as the interactive print function.
+defaultStyling :: SyntaxClass -> Maybe A.AnsiStyle
+defaultStyling = Just . \case
   Identifier k -> case k of
     OpConIdent -> A.color A.Magenta
     OpIdent -> A.colorDull A.Yellow
@@ -191,6 +196,10 @@ defaultStyling = \case
   EscapeSequence -> A.colorDull A.Red
   Keyword -> A.colorDull A.Green
   Structural -> mempty
+
+-- | Disable all syntax highlighting.
+noStyling :: SyntaxClass -> Maybe A.AnsiStyle
+noStyling = mempty
 
 -- | An escape-sequence predicate to escape any non-ASCII character.
 escapeNonASCII :: Char -> Bool
@@ -515,20 +524,22 @@ toDocAssocPrec cfg = cata (toDocAssocPrecF cfg) . unPortrayal
 
 -- | Convenience function for rendering a 'Portrayal' to a 'Text'.
 basicShowPortrayal :: Portrayal -> Text
-basicShowPortrayal p =
-  R.renderStrict $ P.layoutPretty P.defaultLayoutOptions $
-  toDocAssocPrec defaultConfig p AssocNope (-1)
+basicShowPortrayal = styleShowPortrayal defaultConfig (const mempty)
 
 -- | Convenience function for rendering a 'Portrayal' to colorized 'Text'.
 prettyShowPortrayal :: Portrayal -> Text
-prettyShowPortrayal p =
-  A.renderStrict $ fmap defaultStyling $
-  P.layoutPretty P.defaultLayoutOptions $
-  toDocAssocPrec
+prettyShowPortrayal =
+  styleShowPortrayal
     (defaultConfig & setShouldEscapeChar escapeSpecialOnly)
-    p
-    AssocNope
-    (-1)
+    defaultStyling
+
+-- | Convenience function for rendering a 'Portrayal' to stylized 'Text'.
+styleShowPortrayal
+  :: Config -> (SyntaxClass -> Maybe A.AnsiStyle) -> Portrayal -> Text
+styleShowPortrayal cfg style p =
+  A.renderStrict $ P.alterAnnotationsS style $
+  P.layoutPretty P.defaultLayoutOptions $
+  toDocAssocPrec cfg p AssocNope (-1)
 
 -- | A newtype providing a 'Pretty' instance via 'Portray', for @DerivingVia@.
 --
