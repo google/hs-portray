@@ -62,7 +62,6 @@ module Data.Portray
          , showAtom, strAtom, strQuot, strBinop
            -- * Miscellaneous
          , Fix(..), cata, portrayCallStack, portrayType
-         , conIdent, selIdent, prefixCon
          ) where
 
 import Data.Char (isAlpha, isDigit, isUpper)
@@ -454,7 +453,7 @@ class Portray a where
 showAtom :: Show a => a -> Portrayal
 showAtom = strAtom . show
 
--- | Convenience for building an 'Atom' from a 'String'.
+-- | Convenience for building an 'Opaque' from a 'String'.
 --
 -- Note if you just want a string literal, @OverloadedStrings@ is supported.
 strAtom :: String -> Portrayal

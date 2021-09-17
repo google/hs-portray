@@ -100,7 +100,8 @@ module Data.Portray.Prettyprinter
            -- *** Escape Sequences
          , setShouldEscapeChar, escapeNonASCII, escapeSpecialOnly
            -- ** Colorization
-         , SyntaxClass(..), defaultStyling, subtleStyling, noStyling
+         , SyntaxClass(..), LitKind(..)
+         , defaultStyling, subtleStyling, noStyling
            -- ** With Associativity
          , DocAssocPrec, toDocAssocPrecF, toDocAssocPrec
            -- ** Convenience Functions
@@ -168,8 +169,10 @@ matchCtx ctx assoc
   | ctx == assoc = ctx
   | otherwise = AssocNope
 
+-- | The particular kind of literal represented by a 'Literal'.
 data LitKind = IntLit | RatLit | CharLit | StrLit
 
+-- | The kind of syntactic element represented by an annotated 'Doc'.
 data SyntaxClass
   = Identifier IdentKind
     -- ^ Identifiers, whether alphanumeric names or operators.

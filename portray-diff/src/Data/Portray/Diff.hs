@@ -71,7 +71,7 @@ import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Type.Equality ((:~:)(..))
 import Data.Word (Word8, Word16, Word32, Word64)
-import GHC.Exts (IsList(..), proxy#)
+import GHC.Exts (IsList(..), fromString, proxy#)
 import qualified GHC.Exts as Exts (toList)
 import GHC.Generics
 import GHC.TypeLits (KnownSymbol, symbolVal')
@@ -81,7 +81,7 @@ import Data.Portray
          ( Portray(..), Portrayal(..), PortrayalF(..), Fix(..)
          , IdentKind(..), Ident(..)
          , Infixity(..), Assoc(..), FactorPortrayal(..)
-         , showAtom, portrayType, prefixCon, selIdent
+         , showAtom, portrayType
          )
 import qualified Data.DList as D
 import Data.Wrapped (Wrapped(..), Wrapped1(..))
@@ -117,7 +117,7 @@ class GDiffRecord f where
 instance (Selector s, Diff a) => GDiffRecord (S1 s (K1 i a)) where
   gdiffRecord (M1 (K1 a)) (M1 (K1 b)) =
     foldMap D.singleton $  -- Maybe diff to DList of (zero or one) diffs.
-      FactorPortrayal (selIdent $ selName @s undefined) <$>
+      FactorPortrayal (fromString $ selName @s undefined) <$>
       diff a b
 
 instance (GDiffRecord f, GDiffRecord g) => GDiffRecord (f :*: g) where
@@ -154,7 +154,7 @@ instance (KnownSymbol n, GDiffRecord f)
       => GDiff a (C1 ('MetaCons n fx 'True) f) where
   gdiff _ _ (M1 a) (M1 b) = case D.toList (gdiffRecord a b) of
     [] -> Nothing
-    ds -> Just $ Record (prefixCon $ symbolVal' @n proxy#) ds
+    ds -> Just $ Record (Name $ fromString $ symbolVal' @n proxy#) ds
 
 instance (KnownSymbol n, GDiffCtor f)
       => GDiff a (C1 ('MetaCons n fx 'False) f) where
@@ -164,7 +164,7 @@ instance (KnownSymbol n, GDiffCtor f)
       -- Print tuple constructors with tuple syntax.  Ignore infix
       -- constructors, since they'd make for pretty hard-to-read diffs.
       '(':',':_ -> Tuple (D.toList ds)
-      _ -> Apply (prefixCon nm) (D.toList ds)
+      _ -> Apply (Name $ fromString nm) (D.toList ds)
    where
     nm = symbolVal' @n proxy#
 
