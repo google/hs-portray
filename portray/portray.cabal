@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fc9de5409cf7f63616fc77f69818b1d0770bb638a1137937c066fb8b5edbaf30
+-- hash: 109ae2214b5ae5900ac117adf167e79fe09d0d97374f1a340a4bb042182e40fd
 
 name:           portray
-version:        0.1.0.0
+version:        0.1.1
 synopsis:       A pseudo-Haskell syntax type and typeclass producing it.
 description:    This provides a single place to describe how a type should be formatted as
                 pseudo-Haskell syntax, independently of the actual pretty-printing library

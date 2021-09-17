@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: portray
-version: 0.1.0.0
+version: 0.1.1
 category: Text
 synopsis: A pseudo-Haskell syntax type and typeclass producing it.
 description: |

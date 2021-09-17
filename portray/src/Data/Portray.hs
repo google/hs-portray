@@ -40,7 +40,7 @@
 module Data.Portray
          ( -- * Syntax Tree
            Portrayal
-             ( Atom, Apply, Binop, Tuple, List
+             ( Atom, Name, Opaque, Apply, Binop, Tuple, List
              , LambdaCase, Record, TyApp, TySig
              , Quot, Unlines, Nest
              , ..
@@ -217,6 +217,19 @@ pattern Coerced x <- (coerce -> x)
 -- This is used for things like literals and constructor names.
 pattern Atom :: Text -> Portrayal
 pattern Atom txt = Portrayal (Fix (AtomF txt))
+
+-- | Compatibility aid for portray-0.2.
+--
+-- Use this as @Name "a_string_literal"@ or @Name (fromString s)@ to support
+-- both 0.1 and 0.2.
+pattern Name :: Text -> Portrayal
+pattern Name txt = Atom txt
+
+-- | Compatibility aid for portray-0.2.
+--
+-- Use this with any Text argument to support both 0.1 and 0.2.
+pattern Opaque :: Text -> Portrayal
+pattern Opaque txt = Atom txt
 
 -- | A function or constructor application of arbitrary arity.
 --
