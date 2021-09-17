@@ -100,7 +100,7 @@ module Data.Portray.Prettyprinter
            -- *** Escape Sequences
          , setShouldEscapeChar, escapeNonASCII, escapeSpecialOnly
            -- ** Colorization
-         , SyntaxClass(..), defaultStyling, noStyling
+         , SyntaxClass(..), defaultStyling, subtleStyling, noStyling
            -- ** With Associativity
          , DocAssocPrec, toDocAssocPrecF, toDocAssocPrec
            -- ** Convenience Functions
@@ -172,10 +172,19 @@ data LitKind = IntLit | RatLit | CharLit | StrLit
 
 data SyntaxClass
   = Identifier IdentKind
+    -- ^ Identifiers, whether alphanumeric names or operators.
   | Literal LitKind
+    -- ^ Literals, including integers, floats/rationals, chars, and strings.
   | EscapeSequence
+    -- ^ Escaped characters in strings and char literals.
   | Keyword
-  | Structural -- ^ Parens, brackets, and other fixed syntactic symbols.
+    -- ^ Alphanumeric keywords, e.g. @case@.
+  | Bracket
+    -- ^ Matched pairs of symbols that denote nesting, e.g. parens.
+  | Separator
+    -- ^ Syntactic separators/terminators, e.g. @,@ and @;@.
+  | Structural
+    -- ^ Other fixed syntactic symbols, e.g. @::@, @\@@, @->@, @\\@.
 
 -- | A fairly arbitrary colorization style based on what looked good to me.
 --
@@ -195,11 +204,24 @@ defaultStyling = Just . \case
     _      -> A.colorDull A.Cyan
   EscapeSequence -> A.colorDull A.Red
   Keyword -> A.colorDull A.Green
-  Structural -> mempty
+  Bracket -> mempty
+  Separator -> mempty
+  Structural -> A.colorDull A.Green
+
+-- | A subtler style that colorizes only operators (blue) and literals (cyan).
+subtleStyling :: SyntaxClass -> Maybe A.AnsiStyle
+subtleStyling = Just . \case
+  Identifier k -> case k of
+    OpConIdent -> A.colorDull A.Blue
+    OpIdent -> A.colorDull A.Blue
+    _ -> mempty
+  Literal _ -> A.colorDull A.Cyan
+  EscapeSequence -> A.colorDull A.Cyan
+  _ -> mempty
 
 -- | Disable all syntax highlighting.
 noStyling :: SyntaxClass -> Maybe A.AnsiStyle
-noStyling = mempty
+noStyling = const Nothing
 
 -- | An escape-sequence predicate to escape any non-ASCII character.
 escapeNonASCII :: Char -> Bool
@@ -248,7 +270,7 @@ portrayalToDoc cfg t = toDocAssocPrec cfg t AssocNope (-1)
 
 parens :: Doc SyntaxClass -> Doc SyntaxClass
 parens d =
-  P.annotate Structural (char '(') <> d <> P.annotate Structural (char ')')
+  P.annotate Bracket (char '(') <> d <> P.annotate Bracket (char ')')
 
 -- Conditionally wrap a document in parentheses.
 maybeParens :: Bool -> Doc SyntaxClass -> Doc SyntaxClass
@@ -313,10 +335,9 @@ ppBulletList o s c = \case
           zipWith (P.<+>) (repeat separator) docs) <>
       P.line' <> closer
  where
-  f = P.annotate Structural
-  opener = f o
-  separator = f s
-  closer = f c
+  opener = P.annotate Bracket o
+  separator = P.annotate Separator s
+  closer = P.annotate Bracket c
 
 foldl01 :: (b -> a -> b) -> (a -> b) -> b -> [a] -> b
 foldl01 f g z = \case
