@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 64c33853407a6ab05094ee9f90b9d34d0481e1fa210c70a468d6f5cdd9f8cf17
+-- hash: 1d20704ff416df23a54d1d08f1f080f76fde40e07e040fffe3265ddf5ca67677
 
 name:           portray-diff-quickcheck
 version:        0.1.0.0
@@ -42,6 +42,6 @@ library
   build-depends:
       QuickCheck >=2.7 && <2.15
     , base >=4.12 && <4.16
-    , portray-diff >=0.1 && <0.2
-    , portray-pretty >=0.1 && <0.2
+    , portray-diff ==0.1.*
+    , portray-pretty ==0.1.*
   default-language: Haskell2010

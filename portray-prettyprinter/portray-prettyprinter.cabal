@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9a1c9decccd042e10d029755324f91da86d55e74574de17e95f313f00dd9a59b
+-- hash: 234eaad73a279ca94ddd0a4b5f87be88ea6ccb2bafdc0efc159323e33569f934
 
 name:           portray-prettyprinter
 version:        0.2.0
@@ -53,9 +53,9 @@ library
       src
   build-depends:
       base >=4.12 && <4.16
-    , portray >=0.2 && <0.3
-    , portray-diff >=0.1 && <0.2
-    , prettyprinter >=1.7 && <1.8
+    , portray ==0.2.*
+    , portray-diff ==0.1.*
+    , prettyprinter ==1.7.*
     , prettyprinter-ansi-terminal >=1.1.2 && <1.2
     , text >=0.1 && <1.3
   default-language: Haskell2010
@@ -72,9 +72,9 @@ test-suite PortrayPrettyprinter-test
     , QuickCheck
     , base >=4.12 && <4.16
     , portray
-    , portray-diff >=0.1 && <0.2
+    , portray-diff ==0.1.*
     , portray-prettyprinter
-    , prettyprinter >=1.7 && <1.8
+    , prettyprinter ==1.7.*
     , prettyprinter-ansi-terminal >=1.1.2 && <1.2
     , test-framework
     , test-framework-hunit

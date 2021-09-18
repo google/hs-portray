@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d8a84a7f579005a1a70aca7e5c6b39b36177ae03fe56d8a033d5f7cec00d3875
+-- hash: cd14a4a8ec8d2e6313e9a8af20a01cda94f930e26023182418fa3c6b2f5fb85d
 
 name:           portray
 version:        0.2.0
@@ -49,9 +49,9 @@ library
       src
   build-depends:
       base >=4.12 && <4.16
-    , containers >=0.6 && <0.7
+    , containers ==0.6.*
     , text >=0.1 && <1.3
-    , wrapped >=0.1 && <0.2
+    , wrapped ==0.1.*
   default-language: Haskell2010
 
 test-suite Portray-test
@@ -64,10 +64,10 @@ test-suite Portray-test
   build-depends:
       HUnit
     , base >=4.12 && <4.16
-    , containers >=0.6 && <0.7
+    , containers ==0.6.*
     , portray
     , test-framework
     , test-framework-hunit
     , text >=0.1 && <1.3
-    , wrapped >=0.1 && <0.2
+    , wrapped ==0.1.*
   default-language: Haskell2010
