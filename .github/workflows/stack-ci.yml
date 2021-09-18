@@ -1,0 +1,106 @@
+name: Stack CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  prepare:
+    name: Determine Build Matrix
+    runs-on: ubuntu-latest
+
+    outputs:
+      stack-yamls: ${{ steps.enumerate.outputs.stack-yamls }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+
+      - name: Enumerate stack.yaml Files
+        id: enumerate
+        run: |
+          ls stack*.yaml | jq -R -s -c 'split("\n")[:-1]' > stack-yamls.json
+          cat stack-yamls.json
+          echo "::set-output name=stack-yamls::$(cat stack-yamls.json)"
+
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: prepare
+
+    strategy:
+      fail-fast: false
+      matrix:
+        stack-yaml: ${{ fromJson(needs.prepare.outputs.stack-yamls) }}
+
+    env:
+      STACK: "stack --stack-yaml ${{ matrix.stack-yaml }}"
+      STACK_LOCK: ${{ join(matrix.stack-yaml, '.lock') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+
+      - name: Install Stack
+        uses: haskell/actions/setup@eb3073b623d53d0cdd38e4d4c2408f14e3fc71c5
+        id: setup-stack
+        with:
+          enable-stack: true
+          stack-no-global: true
+
+      - name: Fetch Hackage Stamp
+        run: curl -O https://hackage.haskell.org/timestamp.json
+
+      - name: Cache Pantry Package Index
+        uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
+        with:
+          path: ${{ steps.setup-stack.outputs.stack-root }}/pantry
+          key: ${{ runner.os }}-${{ hashFiles('timestamp.json') }}
+          restore-keys: |
+            ${{ runner.os }}-
+
+      - name: Pre-install GHC with Stack
+        id: install-ghc
+        run: |
+          $STACK setup
+          echo "::set-output name=ghc-version::$($STACK ghc -- --numeric-version)"
+
+      - name: Determine Build Plan
+        run: $STACK build --test --dry-run
+
+      - name: Cache Dependencies
+        uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
+        with:
+          path: |
+            ${{ steps.setup-stack.outputs.stack-root }}
+            !${{ steps.setup-stack.outputs.stack-root }}/pantry
+          key: ${{ runner.os }}-${{ steps.install-ghc.outputs.ghc-version }}-${{ hashFiles(env.STACK_LOCK) }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.install-ghc.outputs.ghc-version }}-
+
+      - name: Build Dependencies
+        run: $STACK build --test --only-dependencies
+
+      - name: Cache Modules
+        uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
+        with:
+          path: "**/.stack-work"
+          key: |
+            ${{ runner.os }}-${{ steps.install-ghc.outputs.ghc-version }}-${{ hashFiles(env.STACK_LOCK) }}-${{hashFiles('**/*.hs', '**/package.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.install-ghc.outputs.ghc-version }}-${{ hashFiles(env.STACK_LOCK) }}-
+            ${{ runner.os }}-${{ steps.install-ghc.outputs.ghc-version }}-
+
+      - name: Build
+        run: $STACK build --test --no-run-tests
+
+      - name: Test
+        run: $STACK test
+
+      - name: Haddock
+        run: $STACK haddock --no-haddock-deps
