@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 84c038bd3ae071ca5d8573d57e88e5ed82ec69dfc2c67a8fe1c79712c0bab245
+-- hash: ffa3b44a21c6ef39453c0c4478ffac8e879c9732b9541cfb100aeb20b49d8799
 
 name:           portray-diff
 version:        0.1.0.1
@@ -38,9 +38,9 @@ library
       src
   build-depends:
       base >=4.12 && <4.16
-    , containers >=0.6 && <0.7
+    , containers ==0.6.*
     , dlist >=0.6 && <1.1
-    , portray >=0.2 && <0.3
+    , portray ==0.2.*
     , text >=0.1 && <1.3
-    , wrapped >=0.1 && <0.2
+    , wrapped ==0.1.*
   default-language: Haskell2010
