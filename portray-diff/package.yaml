@@ -21,7 +21,6 @@ description: |
   pretty-printed form.  This is primarily useful for test assertions and manual
   inspection of values.
 license: Apache-2.0
-license-file: LICENSE
 author: Reiner Pope <reinerp@google.com>, Andrew Pritchard <awpr@google.com>
 copyright: 2018-2021 Google LLC
 maintainer: Reiner Pope <reinerp@google.com>, Andrew Pritchard <awpr@google.com>
@@ -43,3 +42,7 @@ library:
   source-dirs: src
   exposed-modules:
     - Data.Portray.Diff
+
+  when:
+    condition: false
+    other-modules: Paths_portray_diff

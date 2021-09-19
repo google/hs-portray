@@ -32,7 +32,6 @@ description: |
   documents/; only a particular flavor of pseudo-Haskell syntax representing
   values and types.
 license: Apache-2.0
-license-file: LICENSE
 author: Andrew Pritchard <awpr@google.com>
 copyright: 2020-2021 Google LLC
 maintainer: Andrew Pritchard <awpr@google.com>
@@ -53,6 +52,10 @@ library:
   exposed-modules:
     - Data.Portray
 
+  when:
+    condition: false
+    other-modules: Paths_portray
+
 tests:
   Portray-test:
     source-dirs: test
@@ -62,3 +65,7 @@ tests:
       - test-framework
       - test-framework-hunit
       - HUnit
+
+    when:
+      condition: false
+      other-modules: Paths_portray

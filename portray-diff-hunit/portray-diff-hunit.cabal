@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 11ff8eb0182ff41d5ebe65001e4a56cc68a614c93806c13dbaaf7faccdca9536
+-- hash: b994519262b892c57b026cac0c32a42677e9a8bd87d344abfb552b9efe78e52d
 
 name:           portray-diff-hunit
 version:        0.1.0.0
@@ -34,8 +34,6 @@ source-repository head
 library
   exposed-modules:
       Data.Portray.Diff.HUnit
-  other-modules:
-      Paths_portray_diff_hunit
   hs-source-dirs:
       src
   build-depends:

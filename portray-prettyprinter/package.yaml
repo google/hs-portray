@@ -58,6 +58,10 @@ library:
   exposed-modules:
     - Data.Portray.Prettyprinter
 
+  when:
+    condition: false
+    other-modules: Paths_portray_prettyprinter
+
 tests:
   PortrayPrettyprinter-test:
     source-dirs: test
@@ -70,3 +74,7 @@ tests:
       - test-framework-quickcheck2
       - HUnit
       - QuickCheck
+
+    when:
+      condition: false
+      other-modules: Paths_portray_prettyprinter

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3f88bb9ca0a5165a26281b40526db841b411a2129b6fddf4e5282ae08af89b9b
+-- hash: 7cb2e51950d200222b61a96d1eae8587804db9857eb02948d4e0648d6733eae3
 
 name:           portray-pretty
 version:        0.1.0.2
@@ -36,8 +36,6 @@ source-repository head
 library
   exposed-modules:
       Data.Portray.Pretty
-  other-modules:
-      Paths_portray_pretty
   hs-source-dirs:
       src
   build-depends:
@@ -51,8 +49,6 @@ library
 test-suite PortrayPretty-test
   type: exitcode-stdio-1.0
   main-is: Main.hs
-  other-modules:
-      Paths_portray_pretty
   hs-source-dirs:
       test
   build-depends:

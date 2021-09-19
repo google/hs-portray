@@ -23,7 +23,6 @@ description: |
     large values, since it can otherwise be difficult to tell what changed
     between expected and actual values.
 license: Apache-2.0
-license-file: LICENSE
 author: Reiner Pope <reinerp@google.com>
 copyright: 2018-2021 Google LLC
 maintainer: Andrew Pritchard <awpr@google.com>
@@ -44,3 +43,7 @@ library:
   source-dirs: src
   exposed-modules:
     - Data.Portray.Diff.HUnit
+
+  when:
+    condition: false
+    other-modules: Paths_portray_diff_hunit

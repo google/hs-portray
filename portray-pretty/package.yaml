@@ -46,6 +46,10 @@ library:
   exposed-modules:
     - Data.Portray.Pretty
 
+  when:
+    condition: false
+    other-modules: Paths_portray_pretty
+
 tests:
   PortrayPretty-test:
     source-dirs: test
@@ -56,3 +60,7 @@ tests:
       - test-framework
       - test-framework-hunit
       - HUnit
+
+    when:
+      condition: false
+      other-modules: Paths_portray_pretty

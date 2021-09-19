@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1d20704ff416df23a54d1d08f1f080f76fde40e07e040fffe3265ddf5ca67677
+-- hash: cbe791dcdfa1f82a672bb05679ccc6faa59fdb9e3af5717358061ea4ddb467c9
 
 name:           portray-diff-quickcheck
 version:        0.1.0.0
@@ -35,8 +35,6 @@ source-repository head
 library
   exposed-modules:
       Data.Portray.Diff.QuickCheck
-  other-modules:
-      Paths_portray_diff_quickcheck
   hs-source-dirs:
       src
   build-depends:

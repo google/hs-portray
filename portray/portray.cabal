@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: cd14a4a8ec8d2e6313e9a8af20a01cda94f930e26023182418fa3c6b2f5fb85d
+-- hash: 807cfb2b52ffb23246de62ae9d49641cae847d83845eb29609692b3ba06d3a89
 
 name:           portray
 version:        0.2.0
@@ -43,8 +43,6 @@ source-repository head
 library
   exposed-modules:
       Data.Portray
-  other-modules:
-      Paths_portray
   hs-source-dirs:
       src
   build-depends:
@@ -57,8 +55,6 @@ library
 test-suite Portray-test
   type: exitcode-stdio-1.0
   main-is: Main.hs
-  other-modules:
-      Paths_portray
   hs-source-dirs:
       test
   build-depends:

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d9c69350254f9ebe04c8d396c92f07ea1baddfbb9cb967d20b48f39f40ca29c8
+-- hash: 03650a51cffbcb13ba118f7a283a15a331c104fd2e47efe9d5ebc0c2f3090436
 
 name:           portray-prettyprinter
 version:        0.2.0
@@ -47,8 +47,6 @@ source-repository head
 library
   exposed-modules:
       Data.Portray.Prettyprinter
-  other-modules:
-      Paths_portray_prettyprinter
   hs-source-dirs:
       src
   build-depends:
@@ -63,8 +61,6 @@ library
 test-suite PortrayPrettyprinter-test
   type: exitcode-stdio-1.0
   main-is: Main.hs
-  other-modules:
-      Paths_portray_prettyprinter
   hs-source-dirs:
       test
   build-depends:
