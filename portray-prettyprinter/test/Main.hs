@@ -12,6 +12,7 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
@@ -27,8 +28,14 @@ import qualified Data.Text as T
 import GHC.Read (readLitChar)
 import GHC.Show (showLitChar)
 
-import qualified Prettyprinter as P
-import qualified Prettyprinter.Render.Text as R
+#if MIN_VERSION_prettyprinter(1, 7, 0)
+#define Prettyprinter_ Prettyprinter
+#else
+#define Prettyprinter_ Data.Text.Prettyprint.Doc
+#endif
+
+import qualified Prettyprinter_ as P
+import qualified Prettyprinter_.Render.Text as R
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -159,9 +166,9 @@ main = defaultMain
       , testCase "line-break" $
           basicShowPortrayal
               (Tuple [strAtom "222", strAtom (replicate 80 '2')]) @?=
-            "( 222\n\
-            \, 2222222222222222222222222222222222222222222222222222222222222\
-            \2222222222222222222\n\
+            "( 222\n\\
+            \, 2222222222222222222222222222222222222222222222222222222222222\\
+            \2222222222222222222\n\\
             \)"
       ]
 
@@ -187,9 +194,9 @@ main = defaultMain
                 [ (Name "True", strAtom (replicate 40 '2'))
                 , (Name "False", strAtom (replicate 40 '4'))
                 ]) @?=
-            "\\case\n\
-            \  { True -> 2222222222222222222222222222222222222222\n\
-            \  ; False -> 4444444444444444444444444444444444444444\n\
+            "\\case\n\\
+            \  { True -> 2222222222222222222222222222222222222222\n\\
+            \  ; False -> 4444444444444444444444444444444444444444\n\\
             \  }"
       , testCase "no-parens" $
           basicShowPortrayal
@@ -222,9 +229,9 @@ main = defaultMain
                 [ FactorPortrayal "l" (portray @[Int] [0..10])
                 , FactorPortrayal "r" (portray @[Int] [0..10])
                 ]) @?=
-          "These\n\
-          \  { l = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n\
-          \  , r = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n\
+          "These\n\\
+          \  { l = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n\\
+          \  , r = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n\\
           \  }"
       , testCase "break-equals" $
           basicShowPortrayal
@@ -233,9 +240,9 @@ main = defaultMain
                     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                     (Name "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
                 ]) @?=
-            "These\n\
-            \  { aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa =\n\
-            \      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\
+            "These\n\\
+            \  { aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa =\n\\
+            \      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\\
             \  }"
       ]
 
@@ -252,7 +259,7 @@ main = defaultMain
               (TyApp
                 (strAtom $ replicate 50 'a')
                 (strAtom $ replicate 50 'a')) @?=
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\\
             \  @aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       ]
 
@@ -270,7 +277,7 @@ main = defaultMain
               (TySig
                 (strAtom $ replicate 50 'a')
                 (strAtom $ replicate 50 'a')) @?=
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\\
             \  :: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       , testCase "parens" $
           basicShowPortrayal

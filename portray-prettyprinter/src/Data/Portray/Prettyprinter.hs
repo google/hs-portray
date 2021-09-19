@@ -81,6 +81,7 @@
 -- This module also exports the underlying rendering functionality in a variety
 -- of forms for more esoteric uses.
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -117,9 +118,15 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T (putStrLn)
 import GHC.Show (showLitChar)
 
-import Prettyprinter (Doc, Pretty(..))
-import qualified Prettyprinter.Render.Terminal as A -- for ANSI
-import qualified Prettyprinter as P
+#if MIN_VERSION_prettyprinter(1, 7, 0)
+#define Prettyprinter_ Prettyprinter
+#else
+#define Prettyprinter_ Data.Text.Prettyprint.Doc
+#endif
+
+import Prettyprinter_ (Doc, Pretty(..))
+import qualified Prettyprinter_.Render.Terminal as A -- for ANSI
+import qualified Prettyprinter_ as P
 
 import Data.Portray
          ( Assoc(..), Infixity(..), FactorPortrayal(..)
