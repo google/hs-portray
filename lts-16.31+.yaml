@@ -1,4 +1,4 @@
-# Copyright 2020-2021 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-resolver: lts-18.10
+resolver: lts-16.31
 
 packages:
-- portray
-- portray-diff
-- portray-diff-hunit
-- portray-diff-quickcheck
-- portray-pretty
-- portray-prettyprinter
-
-extra-deps:
-- attenuation-0.1.0.0
-- wrapped-0.1.0.0
-- fin-int-0.1.0.0
-- sint-0.1.0.0
-
-ghc-options:
-  "$locals": -Wall -Werror
+- prettyprinter-1.7.1
