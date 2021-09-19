@@ -85,8 +85,9 @@ jobs:
             ${{ steps.setup-stack.outputs.stack-root }}/pantry/hackage/*
             !${{ steps.setup-stack.outputs.stack-root }}/pantry/hackage/*.tar
             !${{ steps.setup-stack.outputs.stack-root }}/pantry/hackage/*.tar.gz
-          key: ${{ runner.os }}-${{ hashFiles('timestamp.json') }}
+          key: ${{ runner.os }}-${{ matrix.build.compiler }}-${{ hashFiles('timestamp.json') }}
           restore-keys: |
+            ${{ runner.os }}-${{ matrix.build.compiler }}-
             ${{ runner.os }}-
 
       # GHC takes a while to gunzip and configure; let's try caching it
@@ -173,5 +174,7 @@ jobs:
       - name: Build and Haddock
         run: $STACK build --haddock --test --no-run-tests
 
+      # Run tests with concurrency disabled; see
+      # https://github.com/commercialhaskell/stack/issues/5024.
       - name: Test
-        run: $STACK build --haddock --test
+        run: $STACK build --haddock --test -j 1
