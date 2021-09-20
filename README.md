@@ -2,9 +2,32 @@
 
 A compatibility layer between Haskell-like syntax and pretty-printer backends.
 
+[![Stack CI](https://github.com/google/hs-portray/actions/workflows/stack-ci.yml/badge.svg)](https://github.com/google/hs-portray/actions/workflows/stack-ci.yml)
+
 ## Disclaimer
 
 This is not an officially supported Google product.
+
+## Hackage Status
+
+* [![portray](https://badgen.net/runkit/awpr/hackage/v/portray?icon=haskell&cache=600)](https://hackage.haskell.org/package/portray)
+  ![Uploaded](https://badgen.net/runkit/awpr/hackage/t/portray?cache=600)
+  ![Haddock](https://badgen.net/runkit/awpr/hackage/d/portray?cache=600)
+* [![portray-diff](https://badgen.net/runkit/awpr/hackage/v/portray-diff?icon=haskell&cache=600)](https://hackage.haskell.org/package/portray-diff)
+  ![Uploaded](https://badgen.net/runkit/awpr/hackage/t/portray-diff?cache=600)
+  ![Haddock](https://badgen.net/runkit/awpr/hackage/d/portray-diff?cache=600)
+* [![portray-pretty](https://badgen.net/runkit/awpr/hackage/v/portray-pretty?icon=haskell&cache=600)](https://hackage.haskell.org/package/portray-pretty)
+  ![Uploaded](https://badgen.net/runkit/awpr/hackage/t/portray-pretty?cache=600)
+  ![Haddock](https://badgen.net/runkit/awpr/hackage/d/portray-pretty?cache=600)
+* [![portray-prettyprinter](https://badgen.net/runkit/awpr/hackage/v/portray-prettyprinter?icon=haskell&cache=600)](https://hackage.haskell.org/package/portray-prettyprinter)
+  ![Uploaded](https://badgen.net/runkit/awpr/hackage/t/portray-prettyprinter?cache=600)
+  ![Haddock](https://badgen.net/runkit/awpr/hackage/d/portray-prettyprinter?cache=600)
+* [![portray-diff-hunit](https://badgen.net/runkit/awpr/hackage/v/portray-diff-hunit?icon=haskell&cache=600)](https://hackage.haskell.org/package/portray-diff-hunit)
+  ![Uploaded](https://badgen.net/runkit/awpr/hackage/t/portray-diff-hunit?cache=600)
+  ![Haddock](https://badgen.net/runkit/awpr/hackage/d/portray-diff-hunit?cache=600)
+* [![portray-diff-quickcheck](https://badgen.net/runkit/awpr/hackage/v/portray-diff-quickcheck?icon=haskell&cache=600)](https://hackage.haskell.org/package/portray-diff-quickcheck)
+  ![Uploaded](https://badgen.net/runkit/awpr/hackage/t/portray-diff-quickcheck?cache=600)
+  ![Haddock](https://badgen.net/runkit/awpr/hackage/d/portray-diff-quickcheck?cache=600)
 
 ## Problem Statement
 
