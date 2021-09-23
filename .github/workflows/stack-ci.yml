@@ -124,7 +124,7 @@ jobs:
       # Have stack construct a build plan and lock file for use as a cache key.
       - name: Determine Build Plan
         run: |
-          $STACK build --haddock --test --dry-run
+          $STACK build --test --dry-run
           echo '\n' stack.yaml.lock ${{ hashFiles('stack.yaml.lock') }}
 
       # Cache pre-built dependencies from the same lock file; restore from
@@ -162,7 +162,7 @@ jobs:
 
       # Build the dependencies, hopefully doing little to no work.
       - name: Build Dependencies
-        run: $STACK build --haddock --test --only-dependencies
+        run: $STACK build --test --only-dependencies
 
       # Cache pre-built modules for incremental builds, making sure to keep
       # builds with different dependencies separate.
@@ -185,10 +185,13 @@ jobs:
       # Using --no-haddock-deps somehow forces it to rebuild from scratch every
       # time, so leave that out -- rebuilding unconditionally seems worse than
       # building (and caching) dependencies' haddock.
-      - name: Build and Haddock
-        run: $STACK build --haddock --test --no-run-tests
+      - name: Build
+        run: $STACK build --test --no-run-tests
 
       # Run tests with concurrency disabled; see
       # https://github.com/commercialhaskell/stack/issues/5024.
       - name: Test
-        run: $STACK build --haddock --test -j 1
+        run: $STACK build --test -j 1
+
+      - name: Haddock
+        run: $STACK build --haddock --test --no-run-tests
