@@ -1,6 +1,6 @@
-# 0.1.0.0
+# 0.1.0.2
 
-Initial version.
+* Update to portray-0.2.0
 
 # 0.1.0.1
 
@@ -8,6 +8,6 @@ Initial version.
 * Improve Haddock documentation.
 * Improve the package description and synopsis.
 
-# 0.1.0.2
+# 0.1.0.0
 
-* Update to portray-0.2.0
+Initial version.
