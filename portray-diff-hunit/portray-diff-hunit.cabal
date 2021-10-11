@@ -3,12 +3,10 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: b994519262b892c57b026cac0c32a42677e9a8bd87d344abfb552b9efe78e52d
 
 name:           portray-diff-hunit
 version:        0.1.0.0
-synopsis:       Equality assertion functions for HUnit based on portray-diff.
+synopsis:       HUnit assertions based on portray-diff
 description:    This provides equality assertion functions for HUnit that pretty-print
                 structural diffs of the values in question, rather than dumping the entire
                 alues as part of the counterexamples.  This is useful when comparing very

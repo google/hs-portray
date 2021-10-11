@@ -15,7 +15,7 @@
 name: portray
 version: 0.2.0
 category: Text
-synopsis: A pseudo-Haskell syntax type and typeclass producing it.
+synopsis: Rendering to pseudo-Haskell syntax
 description: |
   This provides a single place to describe how a type should be formatted as
   pseudo-Haskell syntax, independently of the actual pretty-printing library

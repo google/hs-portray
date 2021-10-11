@@ -15,7 +15,7 @@
 name: portray-prettyprinter
 version: 0.2.0
 category: Text
-synopsis: A portray backend using the prettyprinter package.
+synopsis: Portray backend for prettyprinter
 description: |
   This provides a
   <https://hackage.haskell.org/package/prettyprinter prettyprinter> backend for

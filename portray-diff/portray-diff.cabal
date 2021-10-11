@@ -3,12 +3,10 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 4543c71b75fb71c8f8f338d957b6204f4fe1f54150273aab9942e0d3049db0ae
 
 name:           portray-diff
 version:        0.1.0.1
-synopsis:       Visualize the structural differences between two values.
+synopsis:       Pretty structural diffs between two values
 description:    This uses @GHC.Generics@ to provide structural diffs between two values in
                 pretty-printed form.  This is primarily useful for test assertions and manual
                 inspection of values.

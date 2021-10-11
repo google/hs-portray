@@ -3,15 +3,13 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: cbe791dcdfa1f82a672bb05679ccc6faa59fdb9e3af5717358061ea4ddb467c9
 
 name:           portray-diff-quickcheck
 version:        0.1.0.0
-synopsis:       Equality assertion functions for QuickCheck based on portray-diff.
+synopsis:       QuickCheck tests with portray-diff
 description:    This provides equality assertion functions for QuickCheck that pretty-print
                 structural diffs of the values in question, rather than dumping the entire
-                alues as part of the counterexamples.  This is useful when comparing very
+                values as part of the counterexamples.  This is useful when comparing very
                 large values, since it can otherwise be difficult to tell what changed
                 between expected and actual values.
 category:       Data
