@@ -36,7 +36,7 @@ extra-source-files:
 
 dependencies:
   - QuickCheck >= 2.7 && < 2.15
-  - base >= 4.12 && < 4.16
+  - base >= 4.12 && < 4.17
   - portray-diff >= 0.1 && < 0.2
   - portray-pretty >= 0.1 && < 0.2
 

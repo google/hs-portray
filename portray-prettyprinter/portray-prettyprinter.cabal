@@ -48,7 +48,7 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.12 && <4.16
+      base >=4.12 && <4.17
     , portray ==0.2.*
     , portray-diff ==0.1.*
     , prettyprinter >=1.2 && <1.8
@@ -64,7 +64,7 @@ test-suite PortrayPrettyprinter-test
   build-depends:
       HUnit
     , QuickCheck
-    , base >=4.12 && <4.16
+    , base >=4.12 && <4.17
     , portray
     , portray-diff ==0.1.*
     , portray-prettyprinter
