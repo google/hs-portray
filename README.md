@@ -90,8 +90,8 @@ data These a b = This a | That b | These a b
 
 Depend on `portray` and a rendering backend, e.g. `portray-pretty`.  From here,
 you have two main options: either use `Portray` as the primary carrier of
-pretty-printing functionality by using `prettyShow` and `pp`, or use `Portray`
-to derive instances for your pretty-printing class of choice.
+pretty-printing functionality by using `showPortrayal` and `pp`, or use
+`Portray` to derive instances for your pretty-printing class of choice.
 
 To do the former:
 
